@@ -241,11 +241,11 @@ flowchart LR
     - [x] índice `(conversation_id, is_summary)`
 
 - [ ] **MCP server base (NestJS)**
-  - [ ] Inicializar servidor MCP (tool-first).
+  - [x] Inicializar servidor MCP (tool-first).
   - [ ] Registrar tools:
-    - [ ] `save_interaction_memory`
-    - [ ] `search_project_context`
-  - [ ] Definir DTOs mínimos de entrada/salida para ambas tools.
+    - [x] `save_interaction_memory`
+    - [x] `search_project_context`
+  - [x] Definir DTOs mínimos de entrada/salida para ambas tools.
 
 - [ ] **Qdrant ajustado (colección única)**
   - [ ] Crear colección `conversation_summaries` (Cosine).
