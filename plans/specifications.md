@@ -226,19 +226,19 @@ flowchart LR
 ## Checklist técnico de ejecución (Fase 1)
 
 - [ ] **Infra local**
-  - [ ] Crear `docker-compose.yml` con PostgreSQL y Qdrant.
-  - [ ] Crear `.env.example` con variables mínimas (`POSTGRES_`*, `QDRANT_URL`, `EMBEDDING_MODEL`, `TOPK_DEFAULT`).
+  - [x] Crear `docker-compose.yml` con PostgreSQL y Qdrant.
+  - [x] Crear `.env.example` con variables mínimas (`POSTGRES_`*, `QDRANT_URL`, `EMBEDDING_MODEL`, `TOPK_DEFAULT`).
   - [ ] Verificar conectividad desde el servidor MCP a ambos servicios.
 
 - [ ] **Modelo de datos mínimo (PostgreSQL)**
-  - [ ] Crear tabla `projects` (`id`, `name`, `created_at`).
-  - [ ] Crear tabla `conversations` (`id`, `project_id`, `provider`, `user_name`, `created_at`, `updated_at`).
-  - [ ] Crear tabla `prompt_events` (`id`, `conversation_id`, `role`, `content`, `is_summary`, `created_at`).
+  - [x] Crear tabla `projects` (`id`, `name`, `created_at`).
+  - [x] Crear tabla `conversations` (`id`, `project_id`, `provider`, `user_name`, `created_at`, `updated_at`).
+  - [x] Crear tabla `prompt_events` (`id`, `conversation_id`, `role`, `content`, `is_summary`, `created_at`).
   - [ ] Definir FKs e índices base:
-    - [ ] `conversations.project_id -> projects.id`
-    - [ ] `prompt_events.conversation_id -> conversations.id`
-    - [ ] índice `(conversation_id, created_at ASC)`
-    - [ ] índice `(conversation_id, is_summary)`
+    - [x] `conversations.project_id -> projects.id`
+    - [x] `prompt_events.conversation_id -> conversations.id`
+    - [x] índice `(conversation_id, created_at ASC)`
+    - [x] índice `(conversation_id, is_summary)`
 
 - [ ] **MCP server base (NestJS)**
   - [ ] Inicializar servidor MCP (tool-first).
