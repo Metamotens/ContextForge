@@ -57,11 +57,9 @@ ContextForge/
       src/
         main.ts
         app.module.ts
-        config/
-          env.validation.ts
-          token-budget.config.ts
         mcp/
           mcp.module.ts
+          mcp-stdio.server.ts
           tools.registry.ts
           dto/
             search-project-context.dto.ts
@@ -69,23 +67,26 @@ ContextForge/
           tools/
             search-project-context.tool.ts
             save-interaction-memory.tool.ts
+        persistence/
+          qdrant/
+            qdrant.module.ts
+            qdrant.service.ts
+        db/
+          schema.sql
+          migrations/
+        common/
+          utils/
+            identity.util.ts
+            vector.util.ts
+        scripts/
+          smoke-test.ts
+        config/
+          token-budget.config.ts
         retrieval/
           query-normalizer.service.ts
           vector-retrieval.service.ts
           context-compression.service.ts
           prompt-enrichment.service.ts
-        persistence/
-          postgres/
-            db.module.ts
-            schema.sql
-            migrations/
-          qdrant/
-            qdrant.module.ts
-            qdrant.service.ts
-        common/
-          types/
-          utils/
-          constants/
       test/
         unit/
         e2e/
@@ -227,7 +228,7 @@ flowchart LR
 
 - [ ] **Infra local**
   - [x] Crear `docker-compose.yml` con PostgreSQL y Qdrant.
-  - [x] Crear `.env.example` con variables mínimas (`POSTGRES_`*, `QDRANT_URL`, `EMBEDDING_MODEL`, `TOPK_DEFAULT`).
+  - [x] Crear `.env.example` con variables mínimas (`POSTGRES_*`, `QDRANT_URL`, `QDRANT_COLLECTION_NAME`, `EMBEDDING_VECTOR_SIZE`, `TOPK_DEFAULT`).
   - [ ] Verificar conectividad desde el servidor MCP a ambos servicios.
 
 - [ ] **Modelo de datos mínimo (PostgreSQL)**
@@ -248,16 +249,16 @@ flowchart LR
   - [x] Definir DTOs mínimos de entrada/salida para ambas tools.
 
 - [ ] **Qdrant ajustado (colección única)**
-  - [ ] Crear colección `conversation_summaries` (Cosine).
-  - [ ] Configurar `vector_size` desde `EMBEDDING_MODEL`.
+  - [x] Crear colección `conversation_summaries` (Cosine).
+  - [x] Configurar `vector_size` desde `EMBEDDING_VECTOR_SIZE` (defaults inline vía `process.env`).
   - [ ] Definir payload obligatorio:
-    - [ ] `project_id`, `conversation_id`, `provider`, `user_name`, `created_at`, `is_summary=true`.
+    - [x] `project_id`, `conversation_id`, `provider`, `user_name`, `created_at`, `is_summary=true`.
 
 - [ ] **Regla de resumen e indexación (determinista)**
-  - [ ] Guardar turnos normales con `is_summary=false`.
+  - [x] Guardar turnos normales con `is_summary=false`.
   - [ ] Generar resumen (`role=system`, `is_summary=true`) cada 8 turnos o >4k tokens estimados.
-  - [ ] Indexar en Qdrant solo eventos con `is_summary=true`.
-  - [ ] Usar `prompt_events.id` como `id` del punto en Qdrant.
+  - [x] Indexar en Qdrant solo eventos con `is_summary=true`.
+  - [x] Usar `prompt_events.id` como `id` del punto en Qdrant.
 
 - [ ] **Flujo de recuperación de contexto**
   - [ ] En `search_project_context`, filtrar siempre por `project_id`.
@@ -295,6 +296,7 @@ flowchart LR
 ### 3) Servidor MCP en NestJS (tool-first)
 
 - Levantar servidor NestJS con transporte MCP.
+- Variables de entorno con defaults inline (`process.env`); sin módulo de validación dedicado en Fase 1.
 - Implementar tools iniciales:
   - `search_project_context`
   - `save_interaction_memory`
