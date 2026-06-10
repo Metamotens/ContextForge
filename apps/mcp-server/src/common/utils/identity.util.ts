@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash } from 'node:crypto';
 
 function toUuidFromHex(hex: string): string {
   const normalized = hex.slice(0, 32);
@@ -11,6 +11,6 @@ function toUuidFromHex(hex: string): string {
 }
 
 export function deterministicUuid(namespace: string, value: string): string {
-  const hash = createHash("sha256").update(`${namespace}:${value}`).digest("hex");
+  const hash = createHash('sha256').update(`${namespace}:${value}`).digest('hex');
   return toUuidFromHex(hash);
 }

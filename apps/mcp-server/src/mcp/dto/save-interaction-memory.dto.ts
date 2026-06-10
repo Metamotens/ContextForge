@@ -1,6 +1,6 @@
-import { z } from "zod/v4";
+import { z } from 'zod/v4';
 
-export const RoleSchema = z.enum(["user", "assistant", "system"]);
+export const RoleSchema = z.enum(['user', 'assistant', 'system']);
 
 export const SaveInteractionMemoryInputSchema = z.object({
   projectName: z.string().min(1),
