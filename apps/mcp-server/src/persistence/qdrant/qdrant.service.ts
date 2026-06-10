@@ -29,6 +29,17 @@ interface SearchSummariesInput {
   topK?: number;
 }
 
+interface ScrollByProjectIdInput {
+  projectId: string;
+  limit?: number;
+  withPayload?: boolean;
+}
+
+export interface ScrolledSummaryPoint {
+  id: string;
+  payload: SummaryPayload;
+}
+
 @Injectable()
 export class QdrantService {
   private readonly qdrantUrl = process.env.QDRANT_URL ?? 'http://localhost:6333';
@@ -65,20 +76,9 @@ export class QdrantService {
   async indexSummary(input: IndexSummaryInput): Promise<void> {
     await this.ensureCollection();
     await this.flushPendingRetries();
-
-    const payload: SummaryPayload = {
-      project_id: input.projectId,
-      conversation_id: input.conversationId,
-      provider: input.provider,
-      user_name: input.userName,
-      created_at: input.createdAtIso,
-      is_summary: true,
-      summary_text: input.summaryText,
-    };
-
     await this.client.upsert(this.qdrantCollectionName, {
       wait: true,
-      points: [{ id: input.eventId, vector: input.vector, payload }],
+      points: [{ id: input.eventId, vector: input.vector, payload: this.buildPayload(input) }],
     });
   }
 
@@ -93,18 +93,9 @@ export class QdrantService {
     this.log(`Flushing ${this.pendingRetries.size} pending retry(s)`);
     for (const [eventId, retryInput] of this.pendingRetries) {
       try {
-        const payload: SummaryPayload = {
-          project_id: retryInput.projectId,
-          conversation_id: retryInput.conversationId,
-          provider: retryInput.provider,
-          user_name: retryInput.userName,
-          created_at: retryInput.createdAtIso,
-          is_summary: true,
-          summary_text: retryInput.summaryText,
-        };
         await this.client.upsert(this.qdrantCollectionName, {
           wait: true,
-          points: [{ id: retryInput.eventId, vector: retryInput.vector, payload }],
+          points: [{ id: eventId, vector: retryInput.vector, payload: this.buildPayload(retryInput) }],
         });
         this.pendingRetries.delete(eventId);
         this.log(`Retry succeeded for eventId=${eventId}`);
@@ -112,6 +103,18 @@ export class QdrantService {
         this.log(`Retry still failing for eventId=${eventId}: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
+  }
+
+  private buildPayload(input: IndexSummaryInput): SummaryPayload {
+    return {
+      project_id: input.projectId,
+      conversation_id: input.conversationId,
+      provider: input.provider,
+      user_name: input.userName,
+      created_at: input.createdAtIso,
+      is_summary: true,
+      summary_text: input.summaryText,
+    };
   }
 
   async deleteByProjectId(projectId: string): Promise<void> {
@@ -149,5 +152,26 @@ export class QdrantService {
       limit: topK,
       filter: { must: mustFilters },
     });
+  }
+
+  async scrollByProjectId(input: ScrollByProjectIdInput): Promise<ScrolledSummaryPoint[]> {
+    await this.ensureCollection();
+
+    const limit = input.limit ?? 100;
+    const withPayload = input.withPayload ?? true;
+
+    const result = await this.client.scroll(this.qdrantCollectionName, {
+      filter: {
+        must: [{ key: 'project_id', match: { value: input.projectId } }],
+      },
+      limit,
+      with_payload: withPayload,
+      with_vector: false,
+    });
+
+    return result.points.map((point) => ({
+      id: String(point.id),
+      payload: (point.payload ?? {}) as SummaryPayload,
+    }));
   }
 }
