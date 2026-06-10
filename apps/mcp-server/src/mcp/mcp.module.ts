@@ -3,6 +3,7 @@ import { McpModule, McpTransportType } from '@rekog/mcp-nest';
 
 import { SaveInteractionMemoryTool } from './tools/save-interaction-memory.tool';
 import { SearchProjectContextTool } from './tools/search-project-context.tool';
+import { SummaryService } from '../retrieval/summary.service';
 
 @Module({
   imports: [
@@ -12,6 +13,6 @@ import { SearchProjectContextTool } from './tools/search-project-context.tool';
       transport: McpTransportType.STDIO,
     }),
   ],
-  providers: [SaveInteractionMemoryTool, SearchProjectContextTool],
+  providers: [SummaryService, SaveInteractionMemoryTool, SearchProjectContextTool],
 })
 export class McpServerModule {}

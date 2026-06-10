@@ -10,10 +10,10 @@ todos:
     status: pending
   - id: implement-minimal-data-model
     content: Implementar modelo de datos mínimo (projects, conversations, prompt_events) y migraciones
-    status: pending
+    status: completed
   - id: implement-summary-indexing
     content: Implementar creación de resúmenes e indexación en Qdrant solo cuando is_summary=true
-    status: pending
+    status: completed
   - id: implement-context-retrieval-flow
     content: Implementar search_project_context con filtros por project_id y topK bajo adaptativo
     status: pending
@@ -256,7 +256,7 @@ flowchart LR
 
 - [ ] **Regla de resumen e indexación (determinista)**
   - [x] Guardar turnos normales con `is_summary=false`.
-  - [ ] Generar resumen (`role=system`, `is_summary=true`) cada 8 turnos o >4k tokens estimados.
+  - [x] Generar resumen (`role=system`, `is_summary=true`) cada 8 turnos o >4k tokens estimados.
   - [x] Indexar en Qdrant solo eventos con `is_summary=true`.
   - [x] Usar `prompt_events.id` como `id` del punto en Qdrant.
 

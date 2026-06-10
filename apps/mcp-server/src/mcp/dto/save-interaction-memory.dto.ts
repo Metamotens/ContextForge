@@ -13,4 +13,12 @@ export const SaveInteractionMemoryInputSchema = z.object({
 });
 
 export type SaveInteractionMemoryInput = z.infer<typeof SaveInteractionMemoryInputSchema>;
-export type SaveInteractionMemoryOutput = { eventId: string; saved: boolean };
+
+export const SaveInteractionMemoryOutputSchema = z.object({
+  eventId: z.string(),
+  saved: z.boolean(),
+  summaryEventId: z.string().nullable(),
+  summaryReason: z.string(),
+});
+
+export type SaveInteractionMemoryOutput = z.infer<typeof SaveInteractionMemoryOutputSchema>;

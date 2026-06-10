@@ -9,6 +9,7 @@
     "build": "tsc -p tsconfig.json",
     "start:dev": "ts-node src/main.ts",
     "db:smoke": "node --env-file=../../.env -r ts-node/register src/scripts/smoke-test.ts",
+    "db:smoke-summary": "node --env-file=../../.env -r ts-node/register src/scripts/smoke-summary.ts",
     "format": "prettier --write ."
   },
   "dependencies": {
@@ -16,6 +17,7 @@
     "@nestjs/core": "^11.1.26",
     "@qdrant/js-client-rest": "^1.18.0",
     "@rekog/mcp-nest": "^1.9.10",
+    "pg": "^8.13.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "zod": "^4.1.5"
@@ -23,6 +25,7 @@
   "devDependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/node": "^22.19.20",
+    "@types/pg": "^8.11.10",
     "prettier": "^3.8.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"

@@ -1,10 +1,5 @@
-import { execFileSync } from 'node:child_process';
-
-interface StepResult {
-  name: string;
-  ok: boolean;
-  detail: string;
-}
+import { execFileSync } from 'child_process';
+import { StepResult, dockerExecPsql, curlJson } from './smoke-helpers';
 
 function log(message: string): void {
   process.stdout.write(`[smoke] ${message}\n`);
@@ -14,36 +9,20 @@ function err(message: string): void {
   process.stderr.write(`[smoke][error] ${message}\n`);
 }
 
-function dockerExecPsql(sql: string): string {
-  const password = process.env.POSTGRES_PASSWORD ?? '';
-  const user = process.env.POSTGRES_USER ?? 'contextforge';
-  const database = process.env.POSTGRES_DB ?? 'contextforge';
-
-  const stdout = execFileSync(
-    'docker',
-    ['exec', '-i', '-e', `PGPASSWORD=${password}`, 'contextforge-postgres', 'psql', '-U', user, '-d', database, '-tA', '-c', sql,],
-    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true },
-  );
-  return stdout.trim();
-}
-
-function curlJson(url: string): unknown {
-  const stdout = execFileSync('curl.exe', ['-sS', '-m', '5', url], {
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-    windowsHide: true,
-  });
-  return JSON.parse(stdout);
-}
-
 function checkPostgres(stepResults: StepResult[]): void {
   try {
     const ping = dockerExecPsql('SELECT 1');
-    const counts = dockerExecPsql("SELECT (SELECT count(*) FROM projects) || '|' || (SELECT count(*) FROM conversations) || '|' || (SELECT count(*) FROM prompt_events)");
+    const counts = dockerExecPsql(
+      "SELECT (SELECT count(*) FROM projects) || '|' || (SELECT count(*) FROM conversations) || '|' || (SELECT count(*) FROM prompt_events)",
+    );
     const [projects, conversations, events] = counts.split('|');
 
     stepResults.push({ name: 'postgres:connect', ok: ping === '1', detail: `SELECT 1 returned ${ping}` });
-    stepResults.push({ name: 'postgres:tables', ok: true, detail: `projects=${projects}, conversations=${conversations}, prompt_events=${events}` });
+    stepResults.push({
+      name: 'postgres:tables',
+      ok: true,
+      detail: `projects=${projects}, conversations=${conversations}, prompt_events=${events}`,
+    });
   } catch (e) {
     stepResults.push({ name: 'postgres:connect', ok: false, detail: e instanceof Error ? e.message : String(e) });
   }
