@@ -7,7 +7,7 @@ todos:
     status: completed
   - id: build-mcp-server-skeleton
     content: Crear esqueleto NestJS MCP y registro de tools iniciales
-    status: pending
+    status: completed
   - id: implement-minimal-data-model
     content: Implementar modelo de datos mínimo (projects, conversations, prompt_events) y migraciones
     status: completed
@@ -16,7 +16,7 @@ todos:
     status: completed
   - id: implement-context-retrieval-flow
     content: Implementar search_project_context con filtros por project_id y topK bajo adaptativo
-    status: pending
+    status: completed
   - id: validate-e2e-mvp
     content: Validar flujo E2E IDE->MCP->Qdrant/Postgres->respuesta enriquecida y persistencia
     status: pending
@@ -260,11 +260,11 @@ flowchart LR
   - [x] Indexar en Qdrant solo eventos con `is_summary=true`.
   - [x] Usar `prompt_events.id` como `id` del punto en Qdrant.
 
-- [ ] **Flujo de recuperación de contexto**
-  - [ ] En `search_project_context`, filtrar siempre por `project_id`.
-  - [ ] Aplicar filtro opcional por `conversation_id` cuando la consulta sea local.
-  - [ ] Ejecutar búsqueda con `topK=3` (subir a `5` si confianza baja).
-  - [ ] Devolver únicamente snippets resumidos (nunca turnos crudos completos).
+- [x] **Flujo de recuperación de contexto**
+  - [x] En `search_project_context`, filtrar siempre por `project_id`.
+  - [x] Aplicar filtro opcional por `conversation_id` cuando la consulta sea local.
+  - [x] Ejecutar búsqueda con `topK=3` (subir a `5` si confianza baja).
+  - [x] Devolver únicamente snippets resumidos (nunca turnos crudos completos).
 
 - [ ] **Sincronización y tolerancia a fallos**
   - [ ] Si falla Qdrant al indexar, no romper la conversación.

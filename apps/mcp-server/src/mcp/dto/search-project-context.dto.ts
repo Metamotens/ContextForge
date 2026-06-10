@@ -9,4 +9,8 @@ export const SearchProjectContextInputSchema = z.object({
 
 export type SearchProjectContextInput = z.infer<typeof SearchProjectContextInputSchema>;
 export type SearchProjectContextResult = { eventId: string; snippet: string; score: number };
-export type SearchProjectContextOutput = { results: SearchProjectContextResult[] };
+export type SearchProjectContextOutput = {
+  results: SearchProjectContextResult[];
+  tokensUsed: number;
+  truncated: boolean;
+};
