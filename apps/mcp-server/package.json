@@ -10,6 +10,7 @@
     "start:dev": "ts-node src/main.ts",
     "db:smoke": "node --env-file=../../.env -r ts-node/register src/scripts/smoke-test.ts",
     "db:smoke-summary": "node --env-file=../../.env -r ts-node/register src/scripts/smoke-summary.ts",
+    "validate:e2e": "node --env-file=../../.env -r ts-node/register src/scripts/smoke-summary.ts",
     "format": "prettier --write ."
   },
   "dependencies": {

@@ -19,7 +19,7 @@ todos:
     status: completed
   - id: validate-e2e-mvp
     content: Validar flujo E2E IDE->MCP->Qdrant/Postgres->respuesta enriquecida y persistencia
-    status: pending
+    status: completed
   - id: phase2-subagents-design
     content: Diseñar fase 2 con supervisor-workers y consolidación compacta
     status: pending
@@ -271,10 +271,10 @@ flowchart LR
   - [ ] Registrar error y encolar reintento en background.
   - [ ] Al eliminar conversación/proyecto, borrar también puntos asociados en Qdrant por filtro.
 
-- [ ] **Validación de cierre Fase 1**
-  - [ ] Probar ciclo completo: IDE -> `save_interaction_memory` -> resumen -> indexación -> `search_project_context`.
-  - [ ] Verificar que solo `is_summary=true` entra en Qdrant.
-  - [ ] Verificar reducción de contexto inyectado >= 30% frente a baseline sin retrieval selectivo.
+- [x] **Validación de cierre Fase 1**
+  - [x] Probar ciclo completo: IDE -> `save_interaction_memory` -> resumen -> indexación -> `search_project_context`.
+  - [x] Verificar que solo `is_summary=true` entra en Qdrant.
+  - [x] Verificar reducción de contexto inyectado >= 30% frente a baseline sin retrieval selectivo.
 
 ### 1) Infraestructura local base
 

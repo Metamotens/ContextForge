@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 
 import { AppModule } from '../app.module';
 import { SaveInteractionMemoryTool } from '../mcp/tools/save-interaction-memory.tool';
+import { ContextRetrievalService } from '../retrieval/context-retrieval.service';
 import { deterministicUuid } from '../common/utils/identity.util';
 import { StepResult, dockerExecPsql, curlJson } from './smoke-helpers';
 import { execFileSync } from 'child_process';
@@ -83,6 +84,7 @@ async function main(): Promise<number> {
   await app.init();
 
   const tool = app.get(SaveInteractionMemoryTool);
+  const contextRetrieval = app.get(ContextRetrievalService);
 
   try {
     const totalTurns = 9;
@@ -139,6 +141,53 @@ async function main(): Promise<number> {
       name: 'summary:triggered',
       ok: summariesGenerated >= 1,
       detail: `summaries generated in run=${summariesGenerated} (expected >=1), summary events in db=${summaryEvents}`,
+    });
+
+    // --- E2E: search round-trip ---
+    const searchResult = await contextRetrieval.search({
+      projectName: PROJECT_NAME,
+      query: 'cache refactoring sharding metrics observability',
+    });
+    stepResults.push({
+      name: 'search:results',
+      ok: searchResult.results.length >= 1 && searchResult.tokensUsed > 0,
+      detail: `results=${searchResult.results.length} tokensUsed=${searchResult.tokensUsed} truncated=${searchResult.truncated} topScore=${searchResult.results[0]?.score.toFixed(4) ?? 'n/a'}`,
+    });
+
+    // --- E2E: verify only is_summary=true events are indexed in Qdrant ---
+    // Qdrant point count for this project must equal Postgres summary event count
+    const qdrantScrollRaw = execFileSync(
+      'curl.exe',
+      [
+        '-sS', '-m', '10', '-X', 'POST',
+        `${baseUrl}/collections/${collectionName}/points/count`,
+        '-H', 'Content-Type: application/json',
+        '-d', JSON.stringify({ filter: { must: [{ key: 'project_id', match: { value: deterministicUuid('project', PROJECT_NAME) } }] } }),
+      ],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true },
+    );
+    const qdrantProjectCount = (JSON.parse(qdrantScrollRaw) as { result?: { count?: number } }).result?.count ?? 0;
+    stepResults.push({
+      name: 'qdrant:only-summaries',
+      ok: qdrantProjectCount === summaryEvents && summaryEvents > 0,
+      detail: `qdrant points for project=${qdrantProjectCount}, postgres summaries=${summaryEvents} (must be equal)`,
+    });
+
+    // --- E2E: KPI context reduction >= 30% ---
+    // Baseline = estimated tokens of all non-summary turns in the project
+    const rawTokensRaw = dockerExecPsql(
+      `SELECT COALESCE(sum(length(content)), 0) FROM prompt_events pe JOIN conversations c ON c.id=pe.conversation_id JOIN projects p ON p.id=c.project_id WHERE p.name='${PROJECT_NAME}' AND pe.is_summary=false`,
+    );
+    const rawChars = Number(rawTokensRaw) || 0;
+    const baselineTokens = Math.ceil(rawChars / 4);
+    const retrievedTokens = searchResult.tokensUsed;
+    const reductionPct = baselineTokens > 0
+      ? Math.round((1 - retrievedTokens / baselineTokens) * 100)
+      : 0;
+    stepResults.push({
+      name: 'kpi:context-reduction',
+      ok: reductionPct >= 30,
+      detail: `baseline=${baselineTokens} tokens, retrieved=${retrievedTokens} tokens, reduction=${reductionPct}% (target >=30%)`,
     });
   } catch (e) {
     stepResults.push({
