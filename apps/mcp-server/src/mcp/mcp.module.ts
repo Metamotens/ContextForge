@@ -3,6 +3,7 @@ import { McpModule, McpTransportType } from '@rekog/mcp-nest';
 
 import { SaveInteractionMemoryTool } from './tools/save-interaction-memory.tool';
 import { SearchProjectContextTool } from './tools/search-project-context.tool';
+import { DeleteProjectMemoryTool } from './tools/delete-project-memory.tool';
 import { SummaryService } from '../retrieval/summary.service';
 import { ContextRetrievalService } from '../retrieval/context-retrieval.service';
 
@@ -14,6 +15,12 @@ import { ContextRetrievalService } from '../retrieval/context-retrieval.service'
       transport: McpTransportType.STDIO,
     }),
   ],
-  providers: [SummaryService, ContextRetrievalService, SaveInteractionMemoryTool, SearchProjectContextTool],
+  providers: [
+    SummaryService,
+    ContextRetrievalService,
+    SaveInteractionMemoryTool,
+    SearchProjectContextTool,
+    DeleteProjectMemoryTool,
+  ],
 })
 export class McpServerModule {}

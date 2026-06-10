@@ -266,10 +266,10 @@ flowchart LR
   - [x] Ejecutar búsqueda con `topK=3` (subir a `5` si confianza baja).
   - [x] Devolver únicamente snippets resumidos (nunca turnos crudos completos).
 
-- [ ] **Sincronización y tolerancia a fallos**
-  - [ ] Si falla Qdrant al indexar, no romper la conversación.
-  - [ ] Registrar error y encolar reintento en background.
-  - [ ] Al eliminar conversación/proyecto, borrar también puntos asociados en Qdrant por filtro.
+- [x] **Sincronización y tolerancia a fallos**
+  - [x] Si falla Qdrant al indexar, no romper la conversación.
+  - [x] Registrar error y encolar reintento en background.
+  - [x] Al eliminar conversación/proyecto, borrar también puntos asociados en Qdrant por filtro.
 
 - [x] **Validación de cierre Fase 1**
   - [x] Probar ciclo completo: IDE -> `save_interaction_memory` -> resumen -> indexación -> `search_project_context`.

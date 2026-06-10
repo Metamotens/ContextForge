@@ -129,4 +129,22 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
       createdAt: row.created_at,
     }));
   }
+
+  async deleteProject(projectId: string): Promise<void> {
+    await this.pool.query(
+      `DELETE FROM prompt_events
+        WHERE conversation_id IN (
+          SELECT id FROM conversations WHERE project_id = $1
+        )`,
+      [projectId],
+    );
+    await this.pool.query(
+      `DELETE FROM conversations WHERE project_id = $1`,
+      [projectId],
+    );
+    await this.pool.query(
+      `DELETE FROM projects WHERE id = $1`,
+      [projectId],
+    );
+  }
 }

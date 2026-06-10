@@ -98,21 +98,23 @@ export class SaveInteractionMemoryTool {
     userName: string,
     summaryText: string,
   ): Promise<void> {
+    const input = {
+      eventId,
+      projectId,
+      conversationId,
+      provider,
+      userName,
+      createdAtIso: new Date().toISOString(),
+      vector: buildDeterministicVector(summaryText, this.embeddingVectorSize),
+      summaryText,
+    };
     try {
-      await this.qdrantService.indexSummary({
-        eventId,
-        projectId,
-        conversationId,
-        provider,
-        userName,
-        createdAtIso: new Date().toISOString(),
-        vector: buildDeterministicVector(summaryText, this.embeddingVectorSize),
-        summaryText,
-      });
+      await this.qdrantService.indexSummary(input);
     } catch (error) {
       process.stderr.write(
         `[SaveInteractionMemoryTool] Qdrant index failed for eventId=${eventId}: ${error instanceof Error ? error.stack : String(error)}\n`,
       );
+      this.qdrantService.enqueueRetry(input);
     }
   }
 }
