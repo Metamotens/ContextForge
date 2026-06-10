@@ -4,7 +4,7 @@ overview: "Implementar un MVP SDD en dos fases: primero enriquecimiento de promp
 todos:
   - id: bootstrap-local-stack
     content: Definir stack local con docker-compose (PostgreSQL + Qdrant) y variables base
-    status: pending
+    status: completed
   - id: build-mcp-server-skeleton
     content: Crear esqueleto NestJS MCP y registro de tools iniciales
     status: pending
@@ -46,7 +46,7 @@ isProject: false
 ```text
 ContextForge/
   docker-compose.yml
-  .env.example
+  .env
   docs/
     architecture.md
     mvp-kpis.md
@@ -228,8 +228,8 @@ flowchart LR
 
 - [ ] **Infra local**
   - [x] Crear `docker-compose.yml` con PostgreSQL y Qdrant.
-  - [x] Crear `.env.example` con variables mínimas (`POSTGRES_*`, `QDRANT_URL`, `QDRANT_COLLECTION_NAME`, `EMBEDDING_VECTOR_SIZE`, `TOPK_DEFAULT`).
-  - [ ] Verificar conectividad desde el servidor MCP a ambos servicios.
+  - [x] Crear `.env` con variables mínimas (`POSTGRES_*`, `QDRANT_URL`, `QDRANT_COLLECTION_NAME`, `EMBEDDING_VECTOR_SIZE`, `TOPK_DEFAULT`).
+  - [x] Verificar conectividad desde el servidor MCP a ambos servicios (`pnpm run db:smoke`).
 
 - [ ] **Modelo de datos mínimo (PostgreSQL)**
   - [x] Crear tabla `projects` (`id`, `name`, `created_at`).
@@ -279,10 +279,10 @@ flowchart LR
 ### 1) Infraestructura local base
 
 - Crear `docker-compose` con PostgreSQL y Qdrant.
-- Definir variables en `.env.example` para puertos, credenciales y límites de retrieval.
+- Definir variables en `.env` para puertos, credenciales y límites de retrieval.
 - Entregables:
   - [docker-compose.yml](docker-compose.yml)
-  - [.env.example](.env.example)
+  - [.env](.env)
 
 ### 2) Esquema de datos mínimo para memoria útil y barata
 

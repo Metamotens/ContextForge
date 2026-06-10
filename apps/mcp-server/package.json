@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node dist/main.js",
     "build": "tsc -p tsconfig.json",
-    "start:dev": "ts-node src/main.ts"
+    "start:dev": "ts-node src/main.ts",
+    "db:smoke": "node --env-file=../../.env -r ts-node/register src/scripts/smoke-test.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.26",
