@@ -11,7 +11,7 @@ interface SummaryPayload extends Record<string, unknown> {
   summary_text: string;
 }
 
-interface IndexSummaryInput {
+export interface IndexSummaryInput {
   eventId: string;
   projectId: string;
   conversationId: string;
@@ -63,14 +63,38 @@ export class QdrantService {
     const collections = await this.client.getCollections();
     const exists = collections.collections.some((collection) => collection.name === collectionName);
 
-    if (!exists) {
-      await this.client.createCollection(collectionName, {
-        vectors: { size: this.embeddingVectorSize, distance: 'Cosine' },
-      });
-      this.log(`Created Qdrant collection: ${collectionName}`);
+    if (exists) {
+      const info = await this.client.getCollection(collectionName);
+      const existingSize = this.resolveVectorSize(info.config?.params?.vectors);
+
+      if (existingSize !== undefined && existingSize !== this.embeddingVectorSize) {
+        this.log(
+          `Vector size mismatch in "${collectionName}" (${existingSize} → ${this.embeddingVectorSize}); recreating collection`,
+        );
+        await this.client.deleteCollection(collectionName);
+        await this.createCollection(collectionName);
+      }
+    } else {
+      await this.createCollection(collectionName);
     }
 
     this.initialized = true;
+  }
+
+  private resolveVectorSize(
+    vectors: { size?: number } | Record<string, { size?: number }> | undefined,
+  ): number | undefined {
+    if (!vectors) return undefined;
+    if ('size' in vectors && typeof vectors.size === 'number') return vectors.size;
+    const named = Object.values(vectors)[0];
+    return named?.size;
+  }
+
+  private async createCollection(collectionName: string): Promise<void> {
+    await this.client.createCollection(collectionName, {
+      vectors: { size: this.embeddingVectorSize, distance: 'Cosine' },
+    });
+    this.log(`Created Qdrant collection: ${collectionName} (size=${this.embeddingVectorSize})`);
   }
 
   async indexSummary(input: IndexSummaryInput): Promise<void> {

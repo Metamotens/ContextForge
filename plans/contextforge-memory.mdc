@@ -1,0 +1,69 @@
+---
+description: ContextForge MCP memory workflow — mandatory search before responding, save after. Applies to all work on this project.
+alwaysApply: true
+---
+
+# ContextForge Memory Workflow
+
+ContextForge is an MCP server running locally that stores and retrieves conversation memory for this project. You **must** follow this two-step workflow on **every** user message.
+
+## Constants
+
+```
+projectName:    "ContextForge"
+provider:       "cursor"
+userName:       "rober"
+conversationId: "contextforge-dev"
+```
+
+## Step 1 — Before responding: search
+
+Call `search_project_context` with the user's message as the query:
+
+```json
+{
+  "projectName": "ContextForge",
+  "query": "<key terms from the user message>",
+  "conversationId": "contextforge-dev"
+}
+```
+
+- Use the returned `contextBlock` to ground your response in past project knowledge.
+- If `results` is empty or Qdrant is unreachable, the tool returns `contextBlock: ""` — proceed normally.
+- Do not repeat the contextBlock verbatim in your reply; use it to inform your answer.
+
+## Step 2 — After responding: save both turns
+
+Call `save_interaction_memory` **twice**:
+
+**User turn** (call first):
+```json
+{
+  "projectName": "ContextForge",
+  "provider": "cursor",
+  "userName": "rober",
+  "conversationId": "contextforge-dev",
+  "role": "user",
+  "content": "<exact user message>"
+}
+```
+
+**Assistant turn** (call second):
+```json
+{
+  "projectName": "ContextForge",
+  "provider": "cursor",
+  "userName": "rober",
+  "conversationId": "contextforge-dev",
+  "role": "assistant",
+  "content": "<your full response>"
+}
+```
+
+## Rules
+
+- Never skip Step 1 — even if you think the topic is unrelated.
+- Never skip Step 2 — memory is built one turn at a time.
+- Do not store secrets, credentials, or PII in `content`.
+- Keep `conversationId` stable within a chat session (`"contextforge-dev"` for main development work).
+- Both tool calls in Step 2 must use the same `conversationId` as Step 1.

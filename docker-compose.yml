@@ -26,6 +26,29 @@ services:
     networks:
       - contextforge
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: contextforge-ollama
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - contextforge
+
   qdrant:
     image: qdrant/qdrant:v1.18.0
     container_name: contextforge-qdrant
@@ -57,6 +80,8 @@ volumes:
     name: contextforge-postgres-data
   qdrant_data:
     name: contextforge-qdrant-data
+  ollama_data:
+    name: contextforge-ollama-data
 
 networks:
   contextforge:

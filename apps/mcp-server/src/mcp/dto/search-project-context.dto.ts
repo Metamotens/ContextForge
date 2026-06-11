@@ -11,6 +11,8 @@ export type SearchProjectContextInput = z.infer<typeof SearchProjectContextInput
 export type SearchProjectContextResult = { eventId: string; snippet: string; score: number };
 export type SearchProjectContextOutput = {
   results: SearchProjectContextResult[];
+  /** Formatted memory block ready to use as context. Empty string when no relevant memory exists. */
+  contextBlock: string;
   tokensUsed: number;
   truncated: boolean;
 };

@@ -1,11 +1,11 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { createHash } from "node:crypto";
+import { Injectable, Logger } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 
-import { QdrantService } from "../persistence/qdrant/qdrant.service";
-import { deterministicUuid } from "../common/utils/identity.util";
-import { buildDeterministicVector } from "../common/utils/vector.util";
-import { estimateTokens } from "../common/utils/token-estimation.util";
-import { TokenBudget } from "../config/token-budget.config";
+import { QdrantService } from '../persistence/qdrant/qdrant.service';
+import { EmbeddingService } from '../enrichment/embedding.service';
+import { deterministicUuid } from '../common/utils/identity.util';
+import { estimateTokens } from '../common/utils/token-estimation.util';
+import { TokenBudget } from '../config/token-budget.config';
 
 export interface ContextSearchInput {
   projectName: string;
@@ -29,16 +29,18 @@ export interface ContextSearchOutput {
 @Injectable()
 export class ContextRetrievalService {
   private readonly logger = new Logger(ContextRetrievalService.name);
-  private readonly embeddingVectorSize = Number(process.env.EMBEDDING_VECTOR_SIZE) || 1536;
 
-  constructor(private readonly qdrantService: QdrantService) {}
+  constructor(
+    private readonly qdrantService: QdrantService,
+    private readonly embeddingService: EmbeddingService,
+  ) {}
 
   async search(input: ContextSearchInput): Promise<ContextSearchOutput> {
-    const projectId = deterministicUuid("project", input.projectName);
+    const projectId = deterministicUuid('project', input.projectName);
     const conversationId = input.conversationId
-      ? deterministicUuid("conversation", input.conversationId)
+      ? deterministicUuid('conversation', input.conversationId)
       : undefined;
-    const queryVector = buildDeterministicVector(input.query, this.embeddingVectorSize);
+    const queryVector = await this.embeddingService.embed(input.query);
 
     const explicitTopK = input.topK;
     const initialTopK = explicitTopK ?? TokenBudget.topKDefault;
@@ -50,7 +52,6 @@ export class ContextRetrievalService {
       topK: initialTopK,
     });
 
-    // Adaptive topK: if no explicit topK was requested and confidence is low, retry with topKMax
     if (!explicitTopK && this.isLowConfidence(candidates)) {
       this.logger.log(
         `Low confidence results for project=${input.projectName}, retrying with topK=${TokenBudget.topKMax}`,
@@ -67,25 +68,23 @@ export class ContextRetrievalService {
     return this.applyTokenBudget(deduplicated);
   }
 
-  private isLowConfidence(
-    results: Array<{ score?: number }>,
-  ): boolean {
+  private isLowConfidence(results: Array<{ score?: number }>): boolean {
     if (results.length === 0) return true;
     return results.every((r) => (r.score ?? 0) < TokenBudget.scoreThreshold);
   }
 
   private deduplicateByHash(
     results: Array<{ id: string | number; score?: number; payload?: Record<string, unknown> | null }>,
-  ): Array<{ eventId: string; snippet: string; score: number }> {
+  ): ContextSearchResult[] {
     const seen = new Set<string>();
-    const output: Array<{ eventId: string; snippet: string; score: number }> = [];
+    const output: ContextSearchResult[] = [];
 
     for (const point of results) {
       const snippet =
-        typeof point.payload?.summary_text === "string"
+        typeof point.payload?.summary_text === 'string'
           ? point.payload.summary_text
-          : "(summary payload unavailable)";
-      const hash = createHash("sha256").update(snippet).digest("hex");
+          : '(summary payload unavailable)';
+      const hash = createHash('sha256').update(snippet).digest('hex');
       if (seen.has(hash)) continue;
       seen.add(hash);
       output.push({ eventId: String(point.id), snippet, score: point.score ?? 0 });
@@ -94,11 +93,9 @@ export class ContextRetrievalService {
     return output;
   }
 
-  private applyTokenBudget(
-    results: Array<{ eventId: string; snippet: string; score: number }>,
-  ): ContextSearchOutput {
+  private applyTokenBudget(results: ContextSearchResult[]): ContextSearchOutput {
     const sorted = [...results].sort((a, b) => b.score - a.score);
-    const accepted: typeof sorted = [];
+    const accepted: ContextSearchResult[] = [];
     let tokensUsed = 0;
     let truncated = false;
 

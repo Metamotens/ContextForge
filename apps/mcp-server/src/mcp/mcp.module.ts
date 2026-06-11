@@ -1,12 +1,11 @@
 import { Module } from '@nestjs/common';
 import { McpModule, McpTransportType } from '@rekog/mcp-nest';
 
+import { EnrichmentModule } from '../enrichment/enrichment.module';
 import { SaveInteractionMemoryTool } from './tools/save-interaction-memory.tool';
 import { SearchProjectContextTool } from './tools/search-project-context.tool';
 import { DeleteProjectMemoryTool } from './tools/delete-project-memory.tool';
 import { ListProjectMemoryTool } from './tools/list-project-memory.tool';
-import { SummaryService } from '../retrieval/summary.service';
-import { ContextRetrievalService } from '../retrieval/context-retrieval.service';
 
 @Module({
   imports: [
@@ -15,10 +14,9 @@ import { ContextRetrievalService } from '../retrieval/context-retrieval.service'
       version: '0.1.0',
       transport: McpTransportType.STDIO,
     }),
+    EnrichmentModule,
   ],
   providers: [
-    SummaryService,
-    ContextRetrievalService,
     SaveInteractionMemoryTool,
     SearchProjectContextTool,
     DeleteProjectMemoryTool,

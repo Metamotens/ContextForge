@@ -2,8 +2,8 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 
 import { AppModule } from '../app.module';
-import { SaveInteractionMemoryTool } from '../mcp/tools/save-interaction-memory.tool';
-import { ContextRetrievalService } from '../retrieval/context-retrieval.service';
+import { InteractionPersistenceService } from '../enrichment/interaction-persistence.service';
+import { PromptEnrichmentService } from '../enrichment/prompt-enrichment.service';
 import { deterministicUuid } from '../common/utils/identity.util';
 import { StepResult, dockerExecPsql, curlJson } from './smoke-helpers';
 import { execFileSync } from 'child_process';
@@ -42,12 +42,7 @@ function resetSmokeData(stepResults: StepResult[]): void {
     const projectUuid = deterministicUuid('project', PROJECT_NAME);
     const filterPayload = JSON.stringify({
       filter: {
-        must: [
-          {
-            key: 'project_id',
-            match: { value: projectUuid },
-          },
-        ],
+        must: [{ key: 'project_id', match: { value: projectUuid } }],
       },
     });
     execFileSync(
@@ -83,14 +78,15 @@ async function main(): Promise<number> {
   });
   await app.init();
 
-  const tool = app.get(SaveInteractionMemoryTool);
-  const contextRetrieval = app.get(ContextRetrievalService);
+  const persistence = app.get(InteractionPersistenceService);
+  const enrichment = app.get(PromptEnrichmentService);
 
   try {
+    // --- Phase 1: save turns and trigger summary ---
     const totalTurns = 9;
     let summariesGenerated = 0;
     for (let i = 0; i < totalTurns; i += 1) {
-      const userResult = await tool.run({
+      const userResult = await persistence.persistEvent({
         projectName: PROJECT_NAME,
         provider: PROVIDER,
         userName: USER_NAME,
@@ -98,7 +94,7 @@ async function main(): Promise<number> {
         role: 'user',
         content: buildLargeUserTurn(i + 1),
       });
-      const assistantResult = await tool.run({
+      const assistantResult = await persistence.persistEvent({
         projectName: PROJECT_NAME,
         provider: PROVIDER,
         userName: USER_NAME,
@@ -113,6 +109,7 @@ async function main(): Promise<number> {
       );
     }
 
+    // --- Postgres event count ---
     const eventCountRaw = dockerExecPsql(
       `SELECT (SELECT count(*) FROM prompt_events pe JOIN conversations c ON c.id=pe.conversation_id JOIN projects p ON p.id=c.project_id WHERE p.name='${PROJECT_NAME}') || '|' || (SELECT count(*) FROM prompt_events pe JOIN conversations c ON c.id=pe.conversation_id JOIN projects p ON p.id=c.project_id WHERE p.name='${PROJECT_NAME}' AND pe.is_summary=true)`,
     );
@@ -124,6 +121,7 @@ async function main(): Promise<number> {
       detail: `total=${totalEvents} (expected >=${totalTurns * 2}) summary=${summaryEvents}`,
     });
 
+    // --- Qdrant point count ---
     const collectionName = process.env.QDRANT_COLLECTION_NAME ?? 'conversation_summaries';
     const baseUrl = process.env.QDRANT_URL ?? 'http://localhost:6333';
 
@@ -143,19 +141,42 @@ async function main(): Promise<number> {
       detail: `summaries generated in run=${summariesGenerated} (expected >=1), summary events in db=${summaryEvents}`,
     });
 
-    // --- E2E: search round-trip ---
-    const searchResult = await contextRetrieval.search({
+    // --- Phase 2: search via PromptEnrichmentService (tests full pipeline) ---
+    const enrichResult = await enrichment.enrich({
       projectName: PROJECT_NAME,
       query: 'cache refactoring sharding metrics observability',
     });
+
     stepResults.push({
       name: 'search:results',
-      ok: searchResult.results.length >= 1 && searchResult.tokensUsed > 0,
-      detail: `results=${searchResult.results.length} tokensUsed=${searchResult.tokensUsed} truncated=${searchResult.truncated} topScore=${searchResult.results[0]?.score.toFixed(4) ?? 'n/a'}`,
+      ok: enrichResult.results.length >= 1 && enrichResult.tokensUsed > 0,
+      detail: `results=${enrichResult.results.length} tokensUsed=${enrichResult.tokensUsed} truncated=${enrichResult.truncated} topScore=${enrichResult.results[0]?.score.toFixed(4) ?? 'n/a'}`,
     });
 
-    // --- E2E: verify only is_summary=true events are indexed in Qdrant ---
-    // Qdrant point count for this project must equal Postgres summary event count
+    // contextBlock must be a non-empty formatted string when results are present
+    const contextBlockOk =
+      enrichResult.snippetCount > 0
+        ? enrichResult.contextBlock.startsWith('[ContextForge memory') && enrichResult.contextBlock.includes('\n-')
+        : enrichResult.contextBlock === '';
+    stepResults.push({
+      name: 'search:contextBlock',
+      ok: contextBlockOk,
+      detail: `snippets=${enrichResult.snippetCount} contextBlock=${JSON.stringify(enrichResult.contextBlock.slice(0, 120))}`,
+    });
+
+    // --- Circular memory: search for a term present in saved content ---
+    const circularResult = await enrichment.enrich({
+      projectName: PROJECT_NAME,
+      query: 'sharding strategy benchmarks wire metrics',
+      conversationId: CONVERSATION_ID,
+    });
+    stepResults.push({
+      name: 'search:circular-memory',
+      ok: circularResult.results.length >= 1,
+      detail: `Saved turns retrievable after persist: results=${circularResult.results.length} topScore=${circularResult.results[0]?.score.toFixed(4) ?? 'n/a'}`,
+    });
+
+    // --- Only is_summary=true in Qdrant ---
     const qdrantScrollRaw = execFileSync(
       'curl.exe',
       [
@@ -173,14 +194,13 @@ async function main(): Promise<number> {
       detail: `qdrant points for project=${qdrantProjectCount}, postgres summaries=${summaryEvents} (must be equal)`,
     });
 
-    // --- E2E: KPI context reduction >= 30% ---
-    // Baseline = estimated tokens of all non-summary turns in the project
+    // --- KPI: context reduction >= 30% vs sending all raw turns ---
     const rawTokensRaw = dockerExecPsql(
       `SELECT COALESCE(sum(length(content)), 0) FROM prompt_events pe JOIN conversations c ON c.id=pe.conversation_id JOIN projects p ON p.id=c.project_id WHERE p.name='${PROJECT_NAME}' AND pe.is_summary=false`,
     );
     const rawChars = Number(rawTokensRaw) || 0;
     const baselineTokens = Math.ceil(rawChars / 4);
-    const retrievedTokens = searchResult.tokensUsed;
+    const retrievedTokens = enrichResult.tokensUsed;
     const reductionPct = baselineTokens > 0
       ? Math.round((1 - retrievedTokens / baselineTokens) * 100)
       : 0;
@@ -215,9 +235,7 @@ async function main(): Promise<number> {
 }
 
 main().then(
-  (code) => {
-    process.exit(code);
-  },
+  (code) => { process.exit(code); },
   (e) => {
     process.stderr.write(`[smoke-summary][error] ${e instanceof Error ? (e.stack ?? e.message) : String(e)}\n`);
     process.exit(1);

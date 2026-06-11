@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Tool } from '@rekog/mcp-nest';
 
-import { ContextRetrievalService } from '../../retrieval/context-retrieval.service';
+import { PromptEnrichmentService } from '../../enrichment/prompt-enrichment.service';
 import {
   SearchProjectContextInput,
   SearchProjectContextInputSchema,
@@ -10,12 +10,15 @@ import {
 
 @Injectable()
 export class SearchProjectContextTool {
-  constructor(private readonly contextRetrieval: ContextRetrievalService) {}
+  constructor(private readonly enrichment: PromptEnrichmentService) {}
 
   @Tool({
     name: 'search_project_context',
     description:
-      'Search project context from conversation summaries. Returns relevant snippets within a token budget, with adaptive result expansion when confidence is low.',
+      'STEP 1 of the ContextForge memory workflow — call this BEFORE responding to every user message. ' +
+      'Searches past conversation summaries for context relevant to the current query and returns a ' +
+      'ready-to-use contextBlock string within a strict token budget. ' +
+      'Incorporate the contextBlock into your reasoning to ground your response in project history.',
     parameters: SearchProjectContextInputSchema,
   })
   async run(input: SearchProjectContextInput): Promise<SearchProjectContextOutput> {
@@ -24,7 +27,7 @@ export class SearchProjectContextTool {
     );
 
     try {
-      return await this.contextRetrieval.search({
+      return await this.enrichment.enrich({
         projectName: input.projectName,
         query: input.query,
         conversationId: input.conversationId,
@@ -34,7 +37,7 @@ export class SearchProjectContextTool {
       process.stderr.write(
         `[SearchProjectContextTool] search failed: ${error instanceof Error ? error.stack : String(error)}\n`,
       );
-      return { results: [], tokensUsed: 0, truncated: false };
+      return { results: [], contextBlock: '', tokensUsed: 0, truncated: false };
     }
   }
 }
