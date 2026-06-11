@@ -9,7 +9,7 @@ import { InteractionPersistenceService } from '@enrichment/interaction-persisten
 import { PromptEnrichmentService } from '@enrichment/prompt-enrichment.service';
 import { SummaryLlmService } from '@enrichment/summary-llm.service';
 
-// PostgresModule and QdrantModule are @Global() — no need to import them here.
+// PostgresModule and PgVectorModule are @Global() — no need to import them here.
 @Module({
   providers: [
     EmbeddingService,

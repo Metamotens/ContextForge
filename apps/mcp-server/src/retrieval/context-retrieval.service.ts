@@ -6,7 +6,7 @@ import { deterministicUuid } from '@common/utils/identity.util';
 import { estimateTokens } from '@common/utils/token-estimation.util';
 import { TokenBudget } from '@config/token-budget.config';
 import { EmbeddingService } from '@enrichment/embedding.service';
-import { QdrantService } from '@persistence/qdrant/qdrant.service';
+import { PgVectorService } from '@persistence/pgvector/pgvector.service';
 import type {
   ContextSearchInput,
   ContextSearchOutput,
@@ -17,7 +17,7 @@ export class ContextRetrievalService {
   private readonly logger = new Logger(ContextRetrievalService.name);
 
   constructor(
-    private readonly qdrantService: QdrantService,
+    private readonly pgVectorService: PgVectorService,
     private readonly embeddingService: EmbeddingService,
   ) {}
 
@@ -31,7 +31,7 @@ export class ContextRetrievalService {
     const explicitTopK = input.topK;
     const initialTopK = explicitTopK ?? TokenBudget.topKDefault;
 
-    let candidates = await this.qdrantService.searchSummaries({
+    let candidates = await this.pgVectorService.searchSummaries({
       projectId,
       conversationId,
       queryVector,
@@ -42,7 +42,7 @@ export class ContextRetrievalService {
       this.logger.log(
         `Low confidence results for project=${input.projectName}, retrying with topK=${TokenBudget.topKMax}`,
       );
-      candidates = await this.qdrantService.searchSummaries({
+      candidates = await this.pgVectorService.searchSummaries({
         projectId,
         conversationId,
         queryVector,

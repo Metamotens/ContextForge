@@ -17,7 +17,7 @@ export class SaveInteractionMemoryTool {
     description:
       'STEP 2 of the ContextForge memory workflow — call this TWICE after every response: ' +
       'once with role=user (the exact user message) and once with role=assistant (your full response). ' +
-      'Persists both turns in Postgres and automatically generates a summary + Qdrant index entry ' +
+      'Persists both turns in Postgres and automatically generates a summary + pgvector embedding ' +
       'when the conversation reaches the token or turn threshold.',
     parameters: SaveInteractionMemoryInputSchema,
   })

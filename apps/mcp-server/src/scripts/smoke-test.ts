@@ -1,5 +1,4 @@
-import { execFileSync } from 'child_process';
-import { StepResult, dockerExecPsql, curlJson } from '@app/scripts/smoke-helpers';
+import { StepResult, closePsqlPool, execPsql } from '@app/scripts/smoke-helpers';
 
 function log(message: string): void {
   process.stdout.write(`[smoke] ${message}\n`);
@@ -9,10 +8,10 @@ function err(message: string): void {
   process.stderr.write(`[smoke][error] ${message}\n`);
 }
 
-function checkPostgres(stepResults: StepResult[]): void {
+async function checkPostgres(stepResults: StepResult[]): Promise<void> {
   try {
-    const ping = dockerExecPsql('SELECT 1');
-    const counts = dockerExecPsql(
+    const ping = await execPsql('SELECT 1');
+    const counts = await execPsql(
       "SELECT (SELECT count(*) FROM projects) || '|' || (SELECT count(*) FROM conversations) || '|' || (SELECT count(*) FROM prompt_events)",
     );
     const [projects, conversations, events] = counts.split('|');
@@ -28,68 +27,44 @@ function checkPostgres(stepResults: StepResult[]): void {
   }
 }
 
-function checkQdrant(stepResults: StepResult[]): void {
-  const baseUrl = process.env.QDRANT_URL ?? 'http://localhost:6333';
-  const collectionName = process.env.QDRANT_COLLECTION_NAME ?? 'conversation_summaries';
-  const vectorSize = Number(process.env.EMBEDDING_VECTOR_SIZE) || 1536;
+async function checkPgVector(stepResults: StepResult[]): Promise<void> {
+  try {
+    const extName = await execPsql(`SELECT extname FROM pg_extension WHERE extname = 'vector'`);
+    stepResults.push({
+      name: 'pgvector:extension',
+      ok: extName === 'vector',
+      detail: `pg_extension.extname=${extName || '(not found)'}`,
+    });
+  } catch (e) {
+    stepResults.push({ name: 'pgvector:extension', ok: false, detail: e instanceof Error ? e.message : String(e) });
+  }
 
   try {
-    const collections = curlJson(`${baseUrl}/collections`) as { result: { collections: Array<{ name: string }> } };
-    const exists = collections.result.collections.some((c) => c.name === collectionName);
-
-    if (!exists) {
-      execFileSync(
-        'curl.exe',
-        [
-          '-sS',
-          '-m',
-          '10',
-          '-X',
-          'PUT',
-          `${baseUrl}/collections/${collectionName}`,
-          '-H',
-          'Content-Type: application/json',
-          '-d',
-          JSON.stringify({ vectors: { size: vectorSize, distance: 'Cosine' } }),
-        ],
-        { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true },
-      );
-      stepResults.push({
-        name: 'qdrant:collection',
-        ok: true,
-        detail: `created '${collectionName}' (size=${vectorSize}, distance=Cosine)`,
-      });
-    } else {
-      const info = curlJson(`${baseUrl}/collections/${collectionName}`) as {
-        result: {
-          points_count?: number;
-          config?: { params?: { vectors?: { size?: number } | unknown } };
-        };
-      };
-      const params = info.result.config?.params?.vectors;
-      const size = params && typeof params === 'object' && 'size' in params ? (params as { size: number }).size : '?';
-      stepResults.push({
-        name: 'qdrant:collection',
-        ok: true,
-        detail: `exists '${collectionName}' (size=${size}, points=${info.result.points_count ?? 0})`,
-      });
-    }
+    const colName = await execPsql(
+      `SELECT column_name FROM information_schema.columns WHERE table_name='prompt_events' AND column_name='embedding'`,
+    );
+    stepResults.push({
+      name: 'pgvector:embedding-column',
+      ok: colName === 'embedding',
+      detail: `prompt_events.embedding column=${colName || '(not found)'}`,
+    });
   } catch (e) {
-    stepResults.push({ name: 'qdrant:collection', ok: false, detail: e instanceof Error ? e.message : String(e) });
+    stepResults.push({ name: 'pgvector:embedding-column', ok: false, detail: e instanceof Error ? e.message : String(e) });
   }
 }
 
-function main(): number {
+async function main(): Promise<number> {
   log('ContextForge connectivity smoke test');
   log(`cwd=${process.cwd()}`);
   log(
-    `env: POSTGRES=${process.env.POSTGRES_USER ?? '?'}@${process.env.POSTGRES_HOST ?? 'localhost'}:${process.env.POSTGRES_PORT ?? 5432}/${process.env.POSTGRES_DB ?? '?'} | QDRANT=${process.env.QDRANT_URL ?? 'http://localhost:6333'} | collection=${process.env.QDRANT_COLLECTION_NAME ?? 'conversation_summaries'}`,
+    `env: POSTGRES=${process.env.POSTGRES_USER ?? '?'}@${process.env.POSTGRES_HOST ?? 'localhost'}:${process.env.POSTGRES_PORT ?? 5432}/${process.env.POSTGRES_DB ?? '?'}`,
   );
 
   const stepResults: StepResult[] = [];
 
-  checkPostgres(stepResults);
-  checkQdrant(stepResults);
+  await checkPostgres(stepResults);
+  await checkPgVector(stepResults);
+  await closePsqlPool();
 
   log('--- results ---');
   for (const step of stepResults) {
@@ -106,5 +81,10 @@ function main(): number {
   return 1;
 }
 
-const exitCode = main();
-process.exit(exitCode);
+main().then(
+  (code) => { process.exit(code); },
+  (e) => {
+    process.stderr.write(`[smoke][error] ${e instanceof Error ? (e.stack ?? e.message) : String(e)}\n`);
+    process.exit(1);
+  },
+);

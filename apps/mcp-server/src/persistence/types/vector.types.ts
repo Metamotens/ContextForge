@@ -1,16 +1,5 @@
 export type SummaryKind = 'rolling' | 'milestone' | 'final';
 
-export interface SummaryPayload extends Record<string, unknown> {
-  project_id: string;
-  conversation_id: string;
-  provider: string;
-  user_name: string;
-  created_at: string;
-  is_summary: boolean;
-  summary_text: string;
-  summary_kind: SummaryKind;
-}
-
 export interface IndexSummaryInput {
   eventId: string;
   projectId: string;
@@ -38,5 +27,12 @@ export interface ScrollByProjectIdInput {
 
 export interface ScrolledSummaryPoint {
   id: string;
-  payload: SummaryPayload;
+  payload: {
+    conversation_id?: string;
+    provider?: string;
+    user_name?: string;
+    created_at?: string;
+    summary_text?: string;
+    summary_kind?: SummaryKind;
+  };
 }

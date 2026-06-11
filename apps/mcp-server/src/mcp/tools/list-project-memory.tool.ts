@@ -9,10 +9,10 @@ import type {
   ListProjectMemoryEvent,
   ListProjectMemoryInput,
   ListProjectMemoryOutput,
-  ListProjectMemoryQdrantPoint,
+  ListProjectMemoryVectorPoint,
 } from '@mcp/types/list-project-memory.types';
+import { PgVectorService } from '@persistence/pgvector/pgvector.service';
 import { PostgresService } from '@persistence/postgres/postgres.service';
-import { QdrantService } from '@persistence/qdrant/qdrant.service';
 
 const DEFAULT_EVENT_LIMIT = 50;
 const DEFAULT_SNIPPET_CHARS = 240;
@@ -21,13 +21,13 @@ const DEFAULT_SNIPPET_CHARS = 240;
 export class ListProjectMemoryTool {
   constructor(
     private readonly postgres: PostgresService,
-    private readonly qdrantService: QdrantService,
+    private readonly pgVectorService: PgVectorService,
   ) {}
 
   @Tool({
     name: 'list_project_memory',
     description:
-      'Read-only inspection of all stored memory for a project: returns project row, counts (conversations, events, summaries, Qdrant points), per-conversation metadata, recent prompt events, and the indexed Qdrant summary points.',
+      'Read-only inspection of all stored memory for a project: returns project row, counts (conversations, events, summaries, vector points), per-conversation metadata, recent prompt events, and the indexed vector summary points.',
     parameters: ListProjectMemoryInputSchema,
   })
   async run(input: ListProjectMemoryInput): Promise<ListProjectMemoryOutput> {
@@ -66,14 +66,14 @@ export class ListProjectMemoryTool {
       }),
     );
 
-    let qdrantPoints: ListProjectMemoryQdrantPoint[] = [];
+    let vectorPoints: ListProjectMemoryVectorPoint[] = [];
     try {
-      const scrolled = await this.qdrantService.scrollByProjectId({
+      const scrolled = await this.pgVectorService.scrollByProjectId({
         projectId,
         limit: 500,
         withPayload: true,
       });
-      qdrantPoints = scrolled.map((point) => ({
+      vectorPoints = scrolled.map((point) => ({
         id: point.id,
         conversationId: point.payload.conversation_id ?? '',
         provider: point.payload.provider ?? '',
@@ -85,10 +85,10 @@ export class ListProjectMemoryTool {
       }));
     } catch (error) {
       warnings.push(
-        `qdrant_scroll_failed: ${error instanceof Error ? error.message : String(error)}`,
+        `pgvector_scroll_failed: ${error instanceof Error ? error.message : String(error)}`,
       );
       process.stderr.write(
-        `[ListProjectMemoryTool] Qdrant scroll failed for project_id=${projectId}: ${error instanceof Error ? error.stack : String(error)}\n`,
+        `[ListProjectMemoryTool] PgVector scroll failed for project_id=${projectId}: ${error instanceof Error ? error.stack : String(error)}\n`,
       );
     }
 
@@ -99,11 +99,11 @@ export class ListProjectMemoryTool {
         conversations: counts.conversations,
         events: counts.events,
         summaries: counts.summaries,
-        qdrantPointsListed: qdrantPoints.length,
+        vectorSummariesListed: vectorPoints.length,
       },
       conversations,
       events,
-      qdrantPoints,
+      vectorPoints,
       warnings,
     };
   }

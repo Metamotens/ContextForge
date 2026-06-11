@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 
 import { McpServerModule } from '@mcp/mcp.module';
+import { PgVectorModule } from '@persistence/pgvector/pgvector.module';
 import { PostgresModule } from '@persistence/postgres/postgres.module';
-import { QdrantModule } from '@persistence/qdrant/qdrant.module';
 
 @Module({
-  imports: [PostgresModule, QdrantModule, McpServerModule],
+  imports: [PostgresModule, PgVectorModule, McpServerModule],
 })
 export class AppModule {}

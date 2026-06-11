@@ -23,7 +23,7 @@ export interface ListProjectMemoryEvent {
   createdAt: string;
 }
 
-export interface ListProjectMemoryQdrantPoint {
+export interface ListProjectMemoryVectorPoint {
   id: string;
   conversationId: string;
   provider: string;
@@ -39,10 +39,10 @@ export interface ListProjectMemoryOutput {
     conversations: number;
     events: number;
     summaries: number;
-    qdrantPointsListed: number;
+    vectorSummariesListed: number;
   };
   conversations: ListProjectMemoryConversation[];
   events: ListProjectMemoryEvent[];
-  qdrantPoints: ListProjectMemoryQdrantPoint[];
+  vectorPoints: ListProjectMemoryVectorPoint[];
   warnings: string[];
 }

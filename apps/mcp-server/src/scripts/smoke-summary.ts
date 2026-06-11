@@ -5,8 +5,7 @@ import { AppModule } from '@app/app.module';
 import { deterministicUuid } from '@common/utils/identity.util';
 import { InteractionPersistenceService } from '@enrichment/interaction-persistence.service';
 import { PromptEnrichmentService } from '@enrichment/prompt-enrichment.service';
-import { StepResult, dockerExecPsql, curlJson } from '@app/scripts/smoke-helpers';
-import { execFileSync } from 'child_process';
+import { StepResult, closePsqlPool, execPsql } from '@app/scripts/smoke-helpers';
 
 const PROJECT_NAME = 'smoke-summary';
 const PROVIDER = 'smoke-test';
@@ -17,12 +16,12 @@ function log(message: string): void {
   process.stdout.write(`[smoke-summary] ${message}\n`);
 }
 
-function resetSmokeData(stepResults: StepResult[]): void {
+async function resetSmokeData(stepResults: StepResult[]): Promise<void> {
   try {
     const projectUuid = deterministicUuid('project', PROJECT_NAME);
-    const deleted = dockerExecPsql(`DELETE FROM prompt_events WHERE conversation_id IN (SELECT id FROM conversations WHERE project_id = '${projectUuid}')`);
-    const deletedConv = dockerExecPsql(`DELETE FROM conversations WHERE project_id = '${projectUuid}'`);
-    const deletedProj = dockerExecPsql(`DELETE FROM projects WHERE id = '${projectUuid}'`);
+    const deleted = await execPsql(`DELETE FROM prompt_events WHERE conversation_id IN (SELECT id FROM conversations WHERE project_id = '${projectUuid}')`);
+    const deletedConv = await execPsql(`DELETE FROM conversations WHERE project_id = '${projectUuid}'`);
+    const deletedProj = await execPsql(`DELETE FROM projects WHERE id = '${projectUuid}'`);
     stepResults.push({
       name: 'reset:postgres',
       ok: true,
@@ -34,25 +33,6 @@ function resetSmokeData(stepResults: StepResult[]): void {
       ok: false,
       detail: e instanceof Error ? e.message : String(e),
     });
-  }
-
-  try {
-    const collectionName = process.env.QDRANT_COLLECTION_NAME ?? 'conversation_summaries';
-    const baseUrl = process.env.QDRANT_URL ?? 'http://localhost:6333';
-    const projectUuid = deterministicUuid('project', PROJECT_NAME);
-    const filterPayload = JSON.stringify({
-      filter: {
-        must: [{ key: 'project_id', match: { value: projectUuid } }],
-      },
-    });
-    execFileSync(
-      'curl.exe',
-      ['-sS', '-m', '10', '-X', 'POST', `${baseUrl}/collections/${collectionName}/points/delete`, '-H', 'Content-Type: application/json', '-d', filterPayload],
-      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true },
-    );
-    stepResults.push({ name: 'reset:qdrant', ok: true, detail: `deleted points for project_id=${projectUuid}` });
-  } catch (e) {
-    stepResults.push({ name: 'reset:qdrant', ok: false, detail: e instanceof Error ? e.message : String(e) });
   }
 }
 
@@ -71,7 +51,7 @@ async function main(): Promise<number> {
   log(`project=${PROJECT_NAME} conversation=${CONVERSATION_ID}`);
 
   const stepResults: StepResult[] = [];
-  resetSmokeData(stepResults);
+  await resetSmokeData(stepResults);
 
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ['error', 'warn', 'log'],
@@ -110,7 +90,7 @@ async function main(): Promise<number> {
     }
 
     // --- Postgres event count ---
-    const eventCountRaw = dockerExecPsql(
+    const eventCountRaw = await execPsql(
       `SELECT (SELECT count(*) FROM prompt_events pe JOIN conversations c ON c.id=pe.conversation_id JOIN projects p ON p.id=c.project_id WHERE p.name='${PROJECT_NAME}') || '|' || (SELECT count(*) FROM prompt_events pe JOIN conversations c ON c.id=pe.conversation_id JOIN projects p ON p.id=c.project_id WHERE p.name='${PROJECT_NAME}' AND pe.is_summary=true)`,
     );
     const [totalEvents, summaryEvents] = eventCountRaw.split('|').map((s) => Number(s));
@@ -121,18 +101,15 @@ async function main(): Promise<number> {
       detail: `total=${totalEvents} (expected >=${totalTurns * 2}) summary=${summaryEvents}`,
     });
 
-    // --- Qdrant point count ---
-    const collectionName = process.env.QDRANT_COLLECTION_NAME ?? 'conversation_summaries';
-    const baseUrl = process.env.QDRANT_URL ?? 'http://localhost:6333';
-
-    const collectionInfo = curlJson(`${baseUrl}/collections/${collectionName}`) as {
-      result: { points_count?: number };
-    };
-    const totalPoints = collectionInfo.result.points_count ?? 0;
+    // --- pgvector embedding count ---
+    const embeddingCountRaw = await execPsql(
+      `SELECT count(*) FROM prompt_events pe JOIN conversations c ON c.id = pe.conversation_id JOIN projects p ON p.id = c.project_id WHERE p.name = '${PROJECT_NAME}' AND pe.is_summary = true AND pe.embedding IS NOT NULL`,
+    );
+    const totalEmbeddings = Number(embeddingCountRaw);
     stepResults.push({
-      name: 'qdrant:points',
-      ok: totalPoints >= 1,
-      detail: `points=${totalPoints} (expected >=1)`,
+      name: 'pgvector:embeddings',
+      ok: totalEmbeddings >= 1,
+      detail: `embeddings=${totalEmbeddings} (expected >=1)`,
     });
 
     stepResults.push({
@@ -143,7 +120,7 @@ async function main(): Promise<number> {
 
     // --- Verify LLM summary content (not deterministic header) ---
     if (summaryEvents > 0) {
-      const lastSummaryRaw = dockerExecPsql(
+      const lastSummaryRaw = await execPsql(
         `SELECT content FROM prompt_events pe JOIN conversations c ON c.id=pe.conversation_id JOIN projects p ON p.id=c.project_id WHERE p.name='${PROJECT_NAME}' AND pe.is_summary=true ORDER BY pe.created_at DESC LIMIT 1`,
       );
       const isDeterministic = lastSummaryRaw.trim().startsWith('[summary] project=');
@@ -189,26 +166,19 @@ async function main(): Promise<number> {
       detail: `Saved turns retrievable after persist: results=${circularResult.results.length} topScore=${circularResult.results[0]?.score.toFixed(4) ?? 'n/a'}`,
     });
 
-    // --- Only is_summary=true in Qdrant ---
-    const qdrantScrollRaw = execFileSync(
-      'curl.exe',
-      [
-        '-sS', '-m', '10', '-X', 'POST',
-        `${baseUrl}/collections/${collectionName}/points/count`,
-        '-H', 'Content-Type: application/json',
-        '-d', JSON.stringify({ filter: { must: [{ key: 'project_id', match: { value: deterministicUuid('project', PROJECT_NAME) } }] } }),
-      ],
-      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true },
+    // --- Only is_summary=true has embeddings in pgvector ---
+    const onlySummariesRaw = await execPsql(
+      `SELECT count(*) FROM prompt_events pe JOIN conversations c ON c.id = pe.conversation_id JOIN projects p ON p.id = c.project_id WHERE p.name = '${PROJECT_NAME}' AND pe.embedding IS NOT NULL AND pe.is_summary = false`,
     );
-    const qdrantProjectCount = (JSON.parse(qdrantScrollRaw) as { result?: { count?: number } }).result?.count ?? 0;
+    const nonSummaryWithEmbedding = Number(onlySummariesRaw);
     stepResults.push({
-      name: 'qdrant:only-summaries',
-      ok: qdrantProjectCount === summaryEvents && summaryEvents > 0,
-      detail: `qdrant points for project=${qdrantProjectCount}, postgres summaries=${summaryEvents} (must be equal)`,
+      name: 'pgvector:only-summaries',
+      ok: nonSummaryWithEmbedding === 0 && summaryEvents > 0,
+      detail: `non-summary rows with embedding=${nonSummaryWithEmbedding} (must be 0), postgres summaries=${summaryEvents}`,
     });
 
     // --- KPI: context reduction >= 30% vs sending all raw turns ---
-    const rawTokensRaw = dockerExecPsql(
+    const rawTokensRaw = await execPsql(
       `SELECT COALESCE(sum(length(content)), 0) FROM prompt_events pe JOIN conversations c ON c.id=pe.conversation_id JOIN projects p ON p.id=c.project_id WHERE p.name='${PROJECT_NAME}' AND pe.is_summary=false`,
     );
     const rawChars = Number(rawTokensRaw) || 0;
@@ -230,6 +200,7 @@ async function main(): Promise<number> {
     });
   } finally {
     await app.close();
+    await closePsqlPool();
   }
 
   log('--- results ---');

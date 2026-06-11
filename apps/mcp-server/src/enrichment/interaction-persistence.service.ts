@@ -7,16 +7,16 @@ import type {
   PersistEventInput,
   PersistEventOutput,
 } from '@enrichment/types/interaction-persistence.types';
+import { PgVectorService } from '@persistence/pgvector/pgvector.service';
 import { PostgresService } from '@persistence/postgres/postgres.service';
-import type { IndexSummaryInput, SummaryKind } from '@persistence/types/qdrant.types';
-import { QdrantService } from '@persistence/qdrant/qdrant.service';
+import type { IndexSummaryInput, SummaryKind } from '@persistence/types/vector.types';
 import { SummaryService } from '@retrieval/summary.service';
 
 @Injectable()
 export class InteractionPersistenceService {
   constructor(
     private readonly postgres: PostgresService,
-    private readonly qdrant: QdrantService,
+    private readonly pgVector: PgVectorService,
     private readonly summary: SummaryService,
     private readonly embedding: EmbeddingService,
   ) {}
@@ -81,7 +81,7 @@ export class InteractionPersistenceService {
     summaryText: string,
     summaryKind: SummaryKind,
   ): Promise<void> {
-    const qdrantInput: IndexSummaryInput = {
+    const input: IndexSummaryInput = {
       eventId,
       projectId,
       conversationId,
@@ -94,14 +94,14 @@ export class InteractionPersistenceService {
     };
 
     try {
-      qdrantInput.vector = await this.embedding.embed(summaryText);
-      await this.qdrant.indexSummary(qdrantInput);
+      input.vector = await this.embedding.embed(summaryText);
+      await this.pgVector.indexSummary(input);
     } catch (error) {
       process.stderr.write(
-        `[InteractionPersistenceService] Qdrant index failed for eventId=${eventId}: ${error instanceof Error ? error.stack : String(error)}\n`,
+        `[InteractionPersistenceService] PgVector index failed for eventId=${eventId}: ${error instanceof Error ? error.stack : String(error)}\n`,
       );
-      if (qdrantInput.vector.length > 0) {
-        this.qdrant.enqueueRetry(qdrantInput);
+      if (input.vector.length > 0) {
+        this.pgVector.enqueueRetry(input);
       }
     }
   }

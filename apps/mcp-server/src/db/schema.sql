@@ -2,6 +2,7 @@
 -- PostgreSQL 16+
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE IF NOT EXISTS projects (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -24,6 +25,7 @@ CREATE TABLE IF NOT EXISTS prompt_events (
   role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
   content TEXT NOT NULL,
   is_summary BOOLEAN NOT NULL DEFAULT false,
+  embedding vector,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -35,3 +37,7 @@ CREATE INDEX IF NOT EXISTS idx_prompt_events_conversation_created_asc
 
 CREATE INDEX IF NOT EXISTS idx_prompt_events_conversation_is_summary
   ON prompt_events(conversation_id, is_summary);
+
+CREATE INDEX IF NOT EXISTS idx_prompt_events_embedding_cosine
+  ON prompt_events USING hnsw (embedding vector_cosine_ops)
+  WHERE is_summary = true AND embedding IS NOT NULL;

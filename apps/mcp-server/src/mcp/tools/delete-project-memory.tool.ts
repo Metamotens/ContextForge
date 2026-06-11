@@ -8,19 +8,15 @@ import type {
   DeleteProjectMemoryOutput,
 } from '@mcp/types/delete-project-memory.types';
 import { PostgresService } from '@persistence/postgres/postgres.service';
-import { QdrantService } from '@persistence/qdrant/qdrant.service';
 
 @Injectable()
 export class DeleteProjectMemoryTool {
-  constructor(
-    private readonly postgres: PostgresService,
-    private readonly qdrantService: QdrantService,
-  ) {}
+  constructor(private readonly postgres: PostgresService) {}
 
   @Tool({
     name: 'delete_project_memory',
     description:
-      'Delete all stored memory for a project: removes prompt events, conversations, and the project record from Postgres, and deletes all indexed points from Qdrant.',
+      'Delete all stored memory for a project: removes prompt events, conversations, and the project record from Postgres (embeddings are removed automatically via CASCADE DELETE).',
     parameters: DeleteProjectMemoryInputSchema,
   })
   async run(input: DeleteProjectMemoryInput): Promise<DeleteProjectMemoryOutput> {
@@ -29,14 +25,6 @@ export class DeleteProjectMemoryTool {
     process.stderr.write(`[DeleteProjectMemoryTool] Deleting project=${input.projectName} id=${projectId}\n`);
 
     await this.postgres.deleteProject(projectId);
-
-    try {
-      await this.qdrantService.deleteByProjectId(projectId);
-    } catch (error) {
-      process.stderr.write(
-        `[DeleteProjectMemoryTool] Qdrant delete failed for project_id=${projectId}: ${error instanceof Error ? error.stack : String(error)}\n`,
-      );
-    }
 
     return { deleted: true, projectId };
   }
