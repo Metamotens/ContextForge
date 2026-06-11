@@ -1,50 +1,73 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 
+import { SummaryConfig } from '@config/summary.config';
+import { SummaryLlmService } from '@enrichment/summary-llm.service';
 import { PostgresService } from '@persistence/postgres/postgres.service';
 import type {
   MaybeGenerateSummaryInput,
   MaybeGenerateSummaryResult,
-  SummaryContentInput,
 } from '@retrieval/types/summary.types';
-
-const SUMMARY_TURN_THRESHOLD = 8;
-const SUMMARY_TOKEN_THRESHOLD = 4_000;
-const RECENT_TURNS_FOR_SUMMARY = 8;
-const MAX_SNIPPET_CHARS = 240;
 
 @Injectable()
 export class SummaryService {
   private readonly logger = new Logger(SummaryService.name);
 
-  constructor(private readonly postgres: PostgresService) { }
+  constructor(
+    private readonly postgres: PostgresService,
+    private readonly summaryLlm: SummaryLlmService,
+  ) {}
 
   async maybeGenerateSummary(input: MaybeGenerateSummaryInput): Promise<MaybeGenerateSummaryResult> {
     const counters = await this.postgres.countTurnsSinceLastSummary(input.conversationId);
 
-    const reachedTurnThreshold = counters.turnCount >= SUMMARY_TURN_THRESHOLD;
-    const reachedTokenThreshold = counters.estimatedTokens >= SUMMARY_TOKEN_THRESHOLD;
+    const reachedTurnThreshold = counters.turnCount >= SummaryConfig.turnThreshold;
+    const reachedTokenThreshold = counters.estimatedTokens >= SummaryConfig.tokenThreshold;
 
     if (!reachedTurnThreshold && !reachedTokenThreshold) {
       return {
         generated: false,
         summaryEventId: null,
         summaryText: null,
-        reason: `below threshold (turns=${counters.turnCount}/${SUMMARY_TURN_THRESHOLD}, tokens=${counters.estimatedTokens}/${SUMMARY_TOKEN_THRESHOLD})`,
+        reason: `below threshold (turns=${counters.turnCount}/${SummaryConfig.turnThreshold}, tokens=${counters.estimatedTokens}/${SummaryConfig.tokenThreshold})`,
         turnCount: counters.turnCount,
         estimatedTokens: counters.estimatedTokens,
       };
     }
 
-    const recentTurns = await this.postgres.fetchRecentTurns(input.conversationId, RECENT_TURNS_FOR_SUMMARY);
+    const [lastSummary, newTurns] = await Promise.all([
+      this.postgres.fetchLastSummary(input.conversationId),
+      this.postgres.fetchTurnsSinceLastSummary(input.conversationId),
+    ]);
 
-    const summaryText = this.buildDeterministicSummary({
+    if (newTurns.length === 0) {
+      return {
+        generated: false,
+        summaryEventId: null,
+        summaryText: null,
+        reason: 'no new turns to summarize',
+        turnCount: counters.turnCount,
+        estimatedTokens: counters.estimatedTokens,
+      };
+    }
+
+    const summaryText = await this.summaryLlm.generateRollingSummary({
       projectName: input.projectName,
-      conversationId: input.conversationId,
-      recentTurns,
-      turnCount: counters.turnCount,
-      estimatedTokens: counters.estimatedTokens,
+      lastSummaryText: lastSummary?.content ?? null,
+      turns: newTurns,
     });
+
+    if (!summaryText) {
+      this.logger.warn(`LLM summary failed for conversation=${input.conversationId}, skipping.`);
+      return {
+        generated: false,
+        summaryEventId: null,
+        summaryText: null,
+        reason: 'llm_failed',
+        turnCount: counters.turnCount,
+        estimatedTokens: counters.estimatedTokens,
+      };
+    }
 
     const summaryEventId = randomUUID();
 
@@ -59,7 +82,7 @@ export class SummaryService {
     const reasonParts: string[] = [];
     if (reachedTurnThreshold) reasonParts.push(`turns=${counters.turnCount}`);
     if (reachedTokenThreshold) reasonParts.push(`tokens=${counters.estimatedTokens}`);
-    this.logger.log(`Summary generated for conversation=${input.conversationId} (${reasonParts.join(', ')}) eventId=${summaryEventId}`);
+    this.logger.log(`LLM summary generated for conversation=${input.conversationId} (${reasonParts.join(', ')}) eventId=${summaryEventId}`);
 
     return {
       generated: true,
@@ -69,19 +92,5 @@ export class SummaryService {
       turnCount: counters.turnCount,
       estimatedTokens: counters.estimatedTokens,
     };
-  }
-
-  buildDeterministicSummary(input: SummaryContentInput): string {
-    const lines: string[] = [];
-    lines.push(`[summary] project=${input.projectName} conversation=${input.conversationId} turns=${input.turnCount} ~tokens=${input.estimatedTokens}`);
-
-    for (const turn of input.recentTurns) {
-      const cleaned = turn.content.replace(/\s+/g, ' ').trim();
-      const snippet = cleaned.length > MAX_SNIPPET_CHARS ? `${cleaned.slice(0, MAX_SNIPPET_CHARS - 1)}…` : cleaned;
-      const line = `- (${turn.role}) ${snippet}`;
-      lines.push(line);
-    }
-
-    return lines.join('\n');
   }
 }

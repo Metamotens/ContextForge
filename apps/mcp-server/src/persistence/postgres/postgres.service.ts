@@ -5,6 +5,8 @@ import type {
   ConversationCounters,
   CountersRow,
   InsertPromptEventInput,
+  LastSummaryResult,
+  PromptEventRow,
   UpsertConversationInput,
   UpsertProjectInput,
 } from '@persistence/types/postgres.types';
@@ -106,6 +108,40 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
       content: row.content,
       createdAt: row.created_at,
     }));
+  }
+
+  async fetchLastSummary(conversationId: string): Promise<LastSummaryResult | null> {
+    const result = await this.pool.query<PromptEventRow>(
+      `SELECT id, content, created_at
+         FROM prompt_events
+        WHERE conversation_id = $1
+          AND is_summary = true
+        ORDER BY created_at DESC
+        LIMIT 1`,
+      [conversationId],
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+    return { id: row.id, content: row.content, createdAt: row.created_at };
+  }
+
+  async fetchTurnsSinceLastSummary(
+    conversationId: string,
+  ): Promise<Array<{ role: string; content: string }>> {
+    const result = await this.pool.query<PromptEventRow>(
+      `SELECT role, content
+         FROM prompt_events
+        WHERE conversation_id = $1
+          AND role IN ('user', 'assistant')
+          AND is_summary = false
+          AND created_at > COALESCE(
+            (SELECT max(created_at) FROM prompt_events WHERE conversation_id = $1 AND is_summary = true),
+            '1970-01-01'::timestamptz
+          )
+        ORDER BY created_at ASC`,
+      [conversationId],
+    );
+    return result.rows.map((row) => ({ role: row.role, content: row.content }));
   }
 
   async deleteProject(projectId: string): Promise<void> {

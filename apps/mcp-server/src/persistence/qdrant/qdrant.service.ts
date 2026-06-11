@@ -107,6 +107,7 @@ export class QdrantService {
       created_at: input.createdAtIso,
       is_summary: true,
       summary_text: input.summaryText,
+      summary_kind: input.summaryKind ?? 'rolling',
     };
   }
 

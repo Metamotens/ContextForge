@@ -61,7 +61,7 @@ services:
     environment:
       QDRANT__LOG_LEVEL: INFO
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:6333/healthz"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:6333/healthz || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10

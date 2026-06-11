@@ -1,3 +1,5 @@
+export type SummaryKind = 'rolling' | 'milestone' | 'final';
+
 export interface SummaryPayload extends Record<string, unknown> {
   project_id: string;
   conversation_id: string;
@@ -6,6 +8,7 @@ export interface SummaryPayload extends Record<string, unknown> {
   created_at: string;
   is_summary: boolean;
   summary_text: string;
+  summary_kind: SummaryKind;
 }
 
 export interface IndexSummaryInput {
@@ -17,6 +20,7 @@ export interface IndexSummaryInput {
   createdAtIso: string;
   vector: number[];
   summaryText: string;
+  summaryKind?: SummaryKind;
 }
 
 export interface SearchSummariesInput {

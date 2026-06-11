@@ -217,7 +217,7 @@ Definidos en `apps/mcp-server/tsconfig.json` (`paths`) y `package.json` (`import
   - `summary_kind` (`rolling`, `milestone`, `final`)
   - `tags` (array string)
 
-### Reglas de indexación (deterministas)
+### Reglas de indexación
 
 - Se indexa **solo** cuando se crea un `prompt_event` con:
   - `role='system'`
@@ -225,9 +225,19 @@ Definidos en `apps/mcp-server/tsconfig.json` (`paths`) y `package.json` (`import
 - No se indexa:
   - `role='user'` o `role='assistant'`
   - cualquier evento con `is_summary=false`
-- Frecuencia recomendada de resumen:
-  - cada 8 turnos, o
-  - cuando el acumulado estimado supere 4k tokens en la conversación.
+- Frecuencia de resumen:
+  - cada 8 turnos (`SUMMARY_TURN_THRESHOLD`), o
+  - cuando el acumulado estimado supere 4000 tokens (`SUMMARY_TOKEN_THRESHOLD`).
+
+### Generación de resumen (LLM Ollama rolling)
+
+- **Tipo:** LLM chat vía Ollama (`/api/chat`), no determinístico.
+- **Estrategia rolling:** incluye el último resumen previo + todos los turnos user/assistant desde ese resumen.
+- **Servicio:** `SummaryLlmService` (`enrichment/summary-llm.service.ts`).
+- **Config:** `OLLAMA_CHAT_MODEL` (default `llama3.2`), `SUMMARY_MAX_OUTPUT_TOKENS` (512), `SUMMARY_LLM_TIMEOUT_MS` (60000).
+- **Fail-open:** si el LLM falla o timeout, el save del turno completa normalmente sin resumen; se loguea el error.
+- **`summary_kind` en Qdrant:** `rolling` para resúmenes auto-generados por umbral; `milestone` para resúmenes explícitos (`isSummary=true` en `save_interaction_memory`).
+- Plan de implementación detallado: [resumenes-llm-ollama.md](resumenes-llm-ollama.md).
 
 ### Sincronización Postgres <-> Qdrant
 
@@ -308,11 +318,12 @@ flowchart LR
   - [ ] Definir payload obligatorio:
     - [x] `project_id`, `conversation_id`, `provider`, `user_name`, `created_at`, `is_summary=true`.
 
-- [ ] **Regla de resumen e indexación (determinista)**
+- [x] **Regla de resumen e indexación (LLM rolling — supersede determinista)**
   - [x] Guardar turnos normales con `is_summary=false`.
-  - [x] Generar resumen (`role=system`, `is_summary=true`) cada 8 turnos o >4k tokens estimados.
+  - [x] Generar resumen LLM Ollama rolling cada 8 turnos o >4k tokens estimados.
   - [x] Indexar en Qdrant solo eventos con `is_summary=true`.
   - [x] Usar `prompt_events.id` como `id` del punto en Qdrant.
+  - [x] `summary_kind=rolling` para auto-generados; `summary_kind=milestone` para explícitos.
 
 - [x] **Flujo de recuperación de contexto**
   - [x] En `search_project_context`, filtrar siempre por `project_id`.

@@ -7,17 +7,19 @@ import { ContextCompressionService } from '@enrichment/context-compression.servi
 import { EmbeddingService } from '@enrichment/embedding.service';
 import { InteractionPersistenceService } from '@enrichment/interaction-persistence.service';
 import { PromptEnrichmentService } from '@enrichment/prompt-enrichment.service';
+import { SummaryLlmService } from '@enrichment/summary-llm.service';
 
 // PostgresModule and QdrantModule are @Global() — no need to import them here.
 @Module({
   providers: [
     EmbeddingService,
+    SummaryLlmService,
     ContextCompressionService,
     ContextRetrievalService,
     SummaryService,
     PromptEnrichmentService,
     InteractionPersistenceService,
   ],
-  exports: [EmbeddingService, PromptEnrichmentService, InteractionPersistenceService],
+  exports: [EmbeddingService, SummaryLlmService, PromptEnrichmentService, InteractionPersistenceService],
 })
 export class EnrichmentModule {}

@@ -8,7 +8,7 @@ import type {
   PersistEventOutput,
 } from '@enrichment/types/interaction-persistence.types';
 import { PostgresService } from '@persistence/postgres/postgres.service';
-import type { IndexSummaryInput } from '@persistence/types/qdrant.types';
+import type { IndexSummaryInput, SummaryKind } from '@persistence/types/qdrant.types';
 import { QdrantService } from '@persistence/qdrant/qdrant.service';
 import { SummaryService } from '@retrieval/summary.service';
 
@@ -43,7 +43,7 @@ export class InteractionPersistenceService {
     });
 
     if (isSummaryFlag && input.role === 'system') {
-      await this.indexSafely(eventId, projectId, conversationUuid, input.provider, input.userName, input.content);
+      await this.indexSafely(eventId, projectId, conversationUuid, input.provider, input.userName, input.content, 'milestone');
     }
 
     const summaryResult = await this.summary.maybeGenerateSummary({
@@ -60,6 +60,7 @@ export class InteractionPersistenceService {
         input.provider,
         input.userName,
         summaryResult.summaryText,
+        'rolling',
       );
     }
 
@@ -78,6 +79,7 @@ export class InteractionPersistenceService {
     provider: string,
     userName: string,
     summaryText: string,
+    summaryKind: SummaryKind,
   ): Promise<void> {
     const qdrantInput: IndexSummaryInput = {
       eventId,
@@ -88,6 +90,7 @@ export class InteractionPersistenceService {
       createdAtIso: new Date().toISOString(),
       vector: [],
       summaryText,
+      summaryKind,
     };
 
     try {

@@ -141,6 +141,19 @@ async function main(): Promise<number> {
       detail: `summaries generated in run=${summariesGenerated} (expected >=1), summary events in db=${summaryEvents}`,
     });
 
+    // --- Verify LLM summary content (not deterministic header) ---
+    if (summaryEvents > 0) {
+      const lastSummaryRaw = dockerExecPsql(
+        `SELECT content FROM prompt_events pe JOIN conversations c ON c.id=pe.conversation_id JOIN projects p ON p.id=c.project_id WHERE p.name='${PROJECT_NAME}' AND pe.is_summary=true ORDER BY pe.created_at DESC LIMIT 1`,
+      );
+      const isDeterministic = lastSummaryRaw.trim().startsWith('[summary] project=');
+      stepResults.push({
+        name: 'summary:llm-generated',
+        ok: !isDeterministic,
+        detail: `summary does not start with deterministic header: ok=${!isDeterministic} preview=${JSON.stringify(lastSummaryRaw.slice(0, 120))}`,
+      });
+    }
+
     // --- Phase 2: search via PromptEnrichmentService (tests full pipeline) ---
     const enrichResult = await enrichment.enrich({
       projectName: PROJECT_NAME,

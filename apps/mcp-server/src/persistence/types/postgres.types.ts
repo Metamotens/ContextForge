@@ -29,3 +29,16 @@ export interface CountersRow extends QueryResultRow {
   turn_count: string;
   estimated_tokens: string;
 }
+
+export interface PromptEventRow extends QueryResultRow {
+  id: string;
+  role: string;
+  content: string;
+  created_at: Date;
+}
+
+export interface LastSummaryResult {
+  id: string;
+  content: string;
+  createdAt: Date;
+}
