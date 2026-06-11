@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { Tool } from '@rekog/mcp-nest';
 
-import { PromptEnrichmentService } from '../../enrichment/prompt-enrichment.service';
-import { SearchProjectContextInputSchema } from '../schemas/search-project-context.schema';
+import { PromptEnrichmentService } from '@enrichment/prompt-enrichment.service';
+import { SearchProjectContextInputSchema } from '@mcp/schemas/search-project-context.schema';
 import type {
   SearchProjectContextInput,
   SearchProjectContextOutput,
-} from '../types/search-project-context.types';
+} from '@mcp/types/search-project-context.types';
 
 @Injectable()
 export class SearchProjectContextTool {

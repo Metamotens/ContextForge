@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { Tool } from '@rekog/mcp-nest';
 
-import { PostgresService } from '../../persistence/postgres/postgres.service';
-import { QdrantService } from '../../persistence/qdrant/qdrant.service';
-import { deterministicUuid } from '../../common/utils/identity.util';
-import { DeleteProjectMemoryInputSchema } from '../schemas/delete-project-memory.schema';
+import { deterministicUuid } from '@common/utils/identity.util';
+import { DeleteProjectMemoryInputSchema } from '@mcp/schemas/delete-project-memory.schema';
 import type {
   DeleteProjectMemoryInput,
   DeleteProjectMemoryOutput,
-} from '../types/delete-project-memory.types';
+} from '@mcp/types/delete-project-memory.types';
+import { PostgresService } from '@persistence/postgres/postgres.service';
+import { QdrantService } from '@persistence/qdrant/qdrant.service';
 
 @Injectable()
 export class DeleteProjectMemoryTool {

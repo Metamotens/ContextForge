@@ -7,7 +7,7 @@ import type {
   InsertPromptEventInput,
   UpsertConversationInput,
   UpsertProjectInput,
-} from '../types/postgres.types';
+} from '@persistence/types/postgres.types';
 
 @Injectable()
 export class PostgresService implements OnModuleInit, OnModuleDestroy {

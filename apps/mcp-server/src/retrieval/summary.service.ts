@@ -1,12 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 
-import { PostgresService } from '../persistence/postgres/postgres.service';
+import { PostgresService } from '@persistence/postgres/postgres.service';
 import type {
   MaybeGenerateSummaryInput,
   MaybeGenerateSummaryResult,
   SummaryContentInput,
-} from './types/summary.types';
+} from '@retrieval/types/summary.types';
 
 const SUMMARY_TURN_THRESHOLD = 8;
 const SUMMARY_TOKEN_THRESHOLD = 4_000;

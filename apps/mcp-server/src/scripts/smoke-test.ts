@@ -1,5 +1,5 @@
 import { execFileSync } from 'child_process';
-import { StepResult, dockerExecPsql, curlJson } from './smoke-helpers';
+import { StepResult, dockerExecPsql, curlJson } from '@app/scripts/smoke-helpers';
 
 function log(message: string): void {
   process.stdout.write(`[smoke] ${message}\n`);

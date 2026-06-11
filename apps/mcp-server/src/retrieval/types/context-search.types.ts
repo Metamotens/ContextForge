@@ -1,4 +1,4 @@
-import type { ContextSearchResult } from '../../common/types/context-search-result.types';
+import type { ContextSearchResult } from '@common/types/context-search-result.types';
 
 export interface ContextSearchInput {
   projectName: string;

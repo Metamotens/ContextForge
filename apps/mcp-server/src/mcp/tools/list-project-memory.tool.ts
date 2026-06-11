@@ -1,18 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { Tool } from '@rekog/mcp-nest';
 
-import { PostgresService } from '../../persistence/postgres/postgres.service';
-import { QdrantService } from '../../persistence/qdrant/qdrant.service';
-import { deterministicUuid } from '../../common/utils/identity.util';
-import { snippet } from '../../common/utils/text.util';
-import { ListProjectMemoryInputSchema } from '../schemas/list-project-memory.schema';
+import { deterministicUuid } from '@common/utils/identity.util';
+import { snippet } from '@common/utils/text.util';
+import { ListProjectMemoryInputSchema } from '@mcp/schemas/list-project-memory.schema';
 import type {
   ListProjectMemoryConversation,
   ListProjectMemoryEvent,
   ListProjectMemoryInput,
   ListProjectMemoryOutput,
   ListProjectMemoryQdrantPoint,
-} from '../types/list-project-memory.types';
+} from '@mcp/types/list-project-memory.types';
+import { PostgresService } from '@persistence/postgres/postgres.service';
+import { QdrantService } from '@persistence/qdrant/qdrant.service';
 
 const DEFAULT_EVENT_LIMIT = 50;
 const DEFAULT_SNIPPET_CHARS = 240;

@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { QdrantService } from './qdrant.service';
+import { QdrantService } from '@persistence/qdrant/qdrant.service';
 
 @Global()
 @Module({

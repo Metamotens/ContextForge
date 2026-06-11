@@ -15,7 +15,17 @@
     "moduleResolution": "nodenext",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": ["node"]
+    "types": ["node"],
+    "baseUrl": "./src",
+    "paths": {
+      "@common/*": ["common/*"],
+      "@persistence/*": ["persistence/*"],
+      "@retrieval/*": ["retrieval/*"],
+      "@enrichment/*": ["enrichment/*"],
+      "@mcp/*": ["mcp/*"],
+      "@config/*": ["config/*"],
+      "@app/*": ["*"]
+    }
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]

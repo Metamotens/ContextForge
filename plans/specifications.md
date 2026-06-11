@@ -123,6 +123,23 @@ Reglas:
 - **Sin barrel `index.ts` global** — import por archivo concreto.
 - **Excepción**: `StepResult` en `scripts/smoke-helpers.ts` (utilidad de test).
 
+### Path aliases (imports)
+
+Definidos en `apps/mcp-server/tsconfig.json` (`paths`) y `package.json` (`imports`):
+
+| Alias | Resuelve a |
+|-------|------------|
+| `@common/*` | `src/common/*` |
+| `@persistence/*` | `src/persistence/*` |
+| `@retrieval/*` | `src/retrieval/*` |
+| `@enrichment/*` | `src/enrichment/*` |
+| `@mcp/*` | `src/mcp/*` |
+| `@config/*` | `src/config/*` |
+| `@app/*` | `src/*` (raíz: `main.ts`, `app.module.ts`, `scripts/`) |
+
+- **Build**: `tsc` + `tsc-alias` reescribe alias a rutas relativas en `dist/`.
+- **Dev / smoke**: `tsconfig-paths/register` antes de `ts-node/register`.
+
 ### Embeddings (proveedor configurable)
 
 - Default dev: **Ollama** (`EMBEDDING_PROVIDER=ollama`, `nomic-embed-text`, 768 dims).

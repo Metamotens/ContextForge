@@ -1,16 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 
-import { QdrantService } from '../persistence/qdrant/qdrant.service';
-import { EmbeddingService } from '../enrichment/embedding.service';
-import { deterministicUuid } from '../common/utils/identity.util';
-import { estimateTokens } from '../common/utils/token-estimation.util';
-import { TokenBudget } from '../config/token-budget.config';
-import type { ContextSearchResult } from '../common/types/context-search-result.types';
+import type { ContextSearchResult } from '@common/types/context-search-result.types';
+import { deterministicUuid } from '@common/utils/identity.util';
+import { estimateTokens } from '@common/utils/token-estimation.util';
+import { TokenBudget } from '@config/token-budget.config';
+import { EmbeddingService } from '@enrichment/embedding.service';
+import { QdrantService } from '@persistence/qdrant/qdrant.service';
 import type {
   ContextSearchInput,
   ContextSearchOutput,
-} from './types/context-search.types';
+} from '@retrieval/types/context-search.types';
 
 @Injectable()
 export class ContextRetrievalService {

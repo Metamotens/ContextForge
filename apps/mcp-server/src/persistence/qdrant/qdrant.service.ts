@@ -7,7 +7,7 @@ import type {
   ScrolledSummaryPoint,
   SearchSummariesInput,
   SummaryPayload,
-} from '../types/qdrant.types';
+} from '@persistence/types/qdrant.types';
 
 @Injectable()
 export class QdrantService {

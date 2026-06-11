@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 
-import { ContextCompressionService } from './context-compression.service';
-import { ContextRetrievalService } from '../retrieval/context-retrieval.service';
-import type { EnrichmentInput, EnrichmentOutput } from './types/enrichment.types';
+import { ContextRetrievalService } from '@retrieval/context-retrieval.service';
+import { ContextCompressionService } from '@enrichment/context-compression.service';
+import type { EnrichmentInput, EnrichmentOutput } from '@enrichment/types/enrichment.types';
 
 @Injectable()
 export class PromptEnrichmentService {

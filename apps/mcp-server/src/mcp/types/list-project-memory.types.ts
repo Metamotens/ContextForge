@@ -1,6 +1,6 @@
 import type { z } from 'zod/v4';
 
-import { ListProjectMemoryInputSchema } from '../schemas/list-project-memory.schema';
+import { ListProjectMemoryInputSchema } from '@mcp/schemas/list-project-memory.schema';
 
 export type ListProjectMemoryInput = z.infer<typeof ListProjectMemoryInputSchema>;
 

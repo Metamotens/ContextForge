@@ -1,11 +1,11 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 
-import { AppModule } from '../app.module';
-import { InteractionPersistenceService } from '../enrichment/interaction-persistence.service';
-import { PromptEnrichmentService } from '../enrichment/prompt-enrichment.service';
-import { deterministicUuid } from '../common/utils/identity.util';
-import { StepResult, dockerExecPsql, curlJson } from './smoke-helpers';
+import { AppModule } from '@app/app.module';
+import { deterministicUuid } from '@common/utils/identity.util';
+import { InteractionPersistenceService } from '@enrichment/interaction-persistence.service';
+import { PromptEnrichmentService } from '@enrichment/prompt-enrichment.service';
+import { StepResult, dockerExecPsql, curlJson } from '@app/scripts/smoke-helpers';
 import { execFileSync } from 'child_process';
 
 const PROJECT_NAME = 'smoke-summary';

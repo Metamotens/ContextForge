@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { Tool } from '@rekog/mcp-nest';
 
-import { InteractionPersistenceService } from '../../enrichment/interaction-persistence.service';
-import { SaveInteractionMemoryInputSchema } from '../schemas/save-interaction-memory.schema';
+import { InteractionPersistenceService } from '@enrichment/interaction-persistence.service';
+import { SaveInteractionMemoryInputSchema } from '@mcp/schemas/save-interaction-memory.schema';
 import type {
   SaveInteractionMemoryInput,
   SaveInteractionMemoryOutput,
-} from '../types/save-interaction-memory.types';
+} from '@mcp/types/save-interaction-memory.types';
 
 @Injectable()
 export class SaveInteractionMemoryTool {

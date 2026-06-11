@@ -1,5 +1,5 @@
-import type { ContextSearchResult } from '../../common/types/context-search-result.types';
-import type { CompressedContext } from '../../common/types/context-enrichment.types';
+import type { CompressedContext } from '@common/types/context-enrichment.types';
+import type { ContextSearchResult } from '@common/types/context-search-result.types';
 
 export interface EnrichmentInput {
   projectName: string;

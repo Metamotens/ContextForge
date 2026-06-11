@@ -1,16 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 
-import { PostgresService } from '../persistence/postgres/postgres.service';
-import { QdrantService } from '../persistence/qdrant/qdrant.service';
-import { SummaryService } from '../retrieval/summary.service';
-import type { IndexSummaryInput } from '../persistence/types/qdrant.types';
+import { deterministicUuid } from '@common/utils/identity.util';
+import { EmbeddingService } from '@enrichment/embedding.service';
 import type {
   PersistEventInput,
   PersistEventOutput,
-} from './types/interaction-persistence.types';
-import { deterministicUuid } from '../common/utils/identity.util';
-import { EmbeddingService } from './embedding.service';
+} from '@enrichment/types/interaction-persistence.types';
+import { PostgresService } from '@persistence/postgres/postgres.service';
+import type { IndexSummaryInput } from '@persistence/types/qdrant.types';
+import { QdrantService } from '@persistence/qdrant/qdrant.service';
+import { SummaryService } from '@retrieval/summary.service';
 
 @Injectable()
 export class InteractionPersistenceService {
