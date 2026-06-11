@@ -16,10 +16,11 @@
   "scripts": {
     "start": "node dist/main.js",
     "build": "tsc -p tsconfig.json && tsc-alias -p tsconfig.json",
-    "start:dev": "node -r tsconfig-paths/register -r ts-node/register src/main.ts",
-    "db:smoke": "node --env-file=../../.env -r tsconfig-paths/register -r ts-node/register src/scripts/smoke-test.ts",
-    "db:smoke-summary": "node --env-file=../../.env -r tsconfig-paths/register -r ts-node/register src/scripts/smoke-summary.ts",
-    "validate:e2e": "node --env-file=../../.env -r tsconfig-paths/register -r ts-node/register src/scripts/smoke-summary.ts",
+    "start:dev": "pnpm dev:ts src/main.ts",
+    "dev:ts": "node --env-file=../../.env -r tsconfig-paths/register -r ts-node/register",
+    "db:init": "pnpm dev:ts src/scripts/db-init.ts",
+    "db:smoke": "pnpm dev:ts src/scripts/smoke-test.ts",
+    "test:e2e": "pnpm dev:ts src/scripts/smoke-summary.ts",
     "format": "prettier --write ."
   },
   "dependencies": {
