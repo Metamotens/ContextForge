@@ -6,25 +6,11 @@ import { EmbeddingService } from '../enrichment/embedding.service';
 import { deterministicUuid } from '../common/utils/identity.util';
 import { estimateTokens } from '../common/utils/token-estimation.util';
 import { TokenBudget } from '../config/token-budget.config';
-
-export interface ContextSearchInput {
-  projectName: string;
-  query: string;
-  conversationId?: string;
-  topK?: number;
-}
-
-export interface ContextSearchResult {
-  eventId: string;
-  snippet: string;
-  score: number;
-}
-
-export interface ContextSearchOutput {
-  results: ContextSearchResult[];
-  tokensUsed: number;
-  truncated: boolean;
-}
+import type { ContextSearchResult } from '../common/types/context-search-result.types';
+import type {
+  ContextSearchInput,
+  ContextSearchOutput,
+} from './types/context-search.types';
 
 @Injectable()
 export class ContextRetrievalService {

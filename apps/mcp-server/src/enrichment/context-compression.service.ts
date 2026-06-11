@@ -1,12 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { ContextSearchResult } from '../retrieval/context-retrieval.service';
 
-export interface CompressedContext {
-  contextBlock: string;
-  snippetCount: number;
-  tokensUsed: number;
-  truncated: boolean;
-}
+import type { CompressedContext } from '../common/types/context-enrichment.types';
+import type { ContextSearchResult } from '../common/types/context-search-result.types';
 
 @Injectable()
 export class ContextCompressionService {

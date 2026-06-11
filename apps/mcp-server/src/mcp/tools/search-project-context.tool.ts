@@ -2,11 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { Tool } from '@rekog/mcp-nest';
 
 import { PromptEnrichmentService } from '../../enrichment/prompt-enrichment.service';
-import {
+import { SearchProjectContextInputSchema } from '../schemas/search-project-context.schema';
+import type {
   SearchProjectContextInput,
-  SearchProjectContextInputSchema,
   SearchProjectContextOutput,
-} from '../dto/search-project-context.dto';
+} from '../types/search-project-context.types';
 
 @Injectable()
 export class SearchProjectContextTool {
@@ -37,7 +37,7 @@ export class SearchProjectContextTool {
       process.stderr.write(
         `[SearchProjectContextTool] search failed: ${error instanceof Error ? error.stack : String(error)}\n`,
       );
-      return { results: [], contextBlock: '', tokensUsed: 0, truncated: false };
+      return { results: [], contextBlock: '', snippetCount: 0, tokensUsed: 0, truncated: false };
     }
   }
 }

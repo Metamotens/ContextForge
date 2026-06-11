@@ -41,15 +41,15 @@ isProject: false
 - **Fase 1 (MVP):** capturar contexto del prompt, recuperar conocimiento existente del proyecto, enriquecer contexto, responder y persistir aprendizaje.
 - **Fase 2:** introducir subagentes por tarea para repartir contexto y devolver síntesis compacta al agente principal.
 
-## Estructura del proyecto (propuesta base)
+## Estructura del proyecto (actual)
 
 ```text
 ContextForge/
-  docker-compose.yml
+  docker-compose.yml          # postgres, qdrant, ollama
   .env
-  docs/
-    architecture.md
-    mvp-kpis.md
+  plans/
+    specifications.md
+    types-por-modulo.md
   apps/
     mcp-server/
       package.json
@@ -57,41 +57,77 @@ ContextForge/
       src/
         main.ts
         app.module.ts
+        common/
+          types/                # tipos compartidos entre módulos
+            context-search-result.types.ts
+            context-enrichment.types.ts
+          utils/
         mcp/
           mcp.module.ts
-          mcp-stdio.server.ts
-          tools.registry.ts
-          dto/
-            search-project-context.dto.ts
-            save-interaction-memory.dto.ts
+          schemas/              # Zod (validación MCP)
+            *.schema.ts
+          types/                # tipos inferidos y outputs MCP
+            *.types.ts
           tools/
-            search-project-context.tool.ts
-            save-interaction-memory.tool.ts
+            *.tool.ts
         persistence/
+          types/
+            postgres.types.ts
+            qdrant.types.ts
+          postgres/
           qdrant/
-            qdrant.module.ts
-            qdrant.service.ts
-        db/
-          schema.sql
-          migrations/
-        common/
-          utils/
-            identity.util.ts
-            vector.util.ts
-        scripts/
-          smoke-test.ts
-        config/
-          token-budget.config.ts
         retrieval/
-          query-normalizer.service.ts
-          vector-retrieval.service.ts
+          types/
+            context-search.types.ts
+            summary.types.ts
+          context-retrieval.service.ts
+          summary.service.ts
+        enrichment/
+          types/
+            enrichment.types.ts
+            interaction-persistence.types.ts
+          embedding.service.ts
           context-compression.service.ts
           prompt-enrichment.service.ts
+          interaction-persistence.service.ts
+        scripts/
+          smoke-test.ts
+          smoke-summary.ts
+        config/
+          token-budget.config.ts
       test/
         unit/
         e2e/
-          prompt-flow.e2e-spec.ts
 ```
+
+### Organización de tipos y contratos
+
+Plan de referencia: [types-por-modulo.md](types-por-modulo.md).
+
+| Capa | Ubicación | Contiene |
+|------|-----------|----------|
+| Compartido | `common/types/` | Tipos usados por 2+ módulos (`ContextSearchResult`, `CompressedContext`) |
+| Persistencia | `persistence/types/` | Contratos Postgres y Qdrant |
+| Retrieval | `retrieval/types/` | Búsqueda de contexto y resúmenes |
+| Enrichment | `enrichment/types/` | Enriquecimiento y persistencia de interacciones |
+| Borde MCP (schemas) | `mcp/schemas/*.schema.ts` | Esquemas Zod (`*Schema`) |
+| Borde MCP (tipos) | `mcp/types/*.types.ts` | `z.infer` y outputs de tools |
+| Servicios | `*/` junto a su `types/` | Solo lógica; importan de su módulo o `common/types/` |
+| Tools MCP | `mcp/tools/` | Importan de `schemas/` + `types/` |
+
+Reglas:
+
+- **Servicios** (`@Injectable`): no exportan `interface` ni `type` de contrato.
+- **`common/types/`** no importa de feature modules (sin dependencias invertidas).
+- **Import cruzado** entre features permitido vía `common/types/` o importando el `types/` del módulo dueño (ej. enrichment → `persistence/types/qdrant.types`).
+- **Sin barrel `index.ts` global** — import por archivo concreto.
+- **Excepción**: `StepResult` en `scripts/smoke-helpers.ts` (utilidad de test).
+
+### Embeddings (proveedor configurable)
+
+- Default dev: **Ollama** (`EMBEDDING_PROVIDER=ollama`, `nomic-embed-text`, 768 dims).
+- Producción opcional: **OpenAI** (`EMBEDDING_PROVIDER=openai`, `text-embedding-3-small`, 1536 dims).
+- Qdrant recrea la colección automáticamente si cambia `EMBEDDING_VECTOR_SIZE`.
 
 ## Modelos de tablas PostgreSQL (Fase 1)
 
@@ -247,6 +283,7 @@ flowchart LR
     - [x] `save_interaction_memory`
     - [x] `search_project_context`
   - [x] Definir DTOs mínimos de entrada/salida para ambas tools.
+  - [x] Tipos por módulo (`common/types`, `{module}/types`, `mcp/schemas` + `mcp/types`). Ver [types-por-modulo.md](types-por-modulo.md).
 
 - [ ] **Qdrant ajustado (colección única)**
   - [x] Crear colección `conversation_summaries` (Cosine).
@@ -317,9 +354,11 @@ flowchart LR
   6. Composición de prompt final (contexto mínimo útil).
   7. Persistencia post-respuesta (memoria y métricas).
 - Entregables:
-  - [apps/mcp-server/src/services/context-retrieval.service.ts](apps/mcp-server/src/services/context-retrieval.service.ts)
-  - [apps/mcp-server/src/services/context-compression.service.ts](apps/mcp-server/src/services/context-compression.service.ts)
-  - [apps/mcp-server/src/services/prompt-enrichment.service.ts](apps/mcp-server/src/services/prompt-enrichment.service.ts)
+  - [apps/mcp-server/src/retrieval/context-retrieval.service.ts](apps/mcp-server/src/retrieval/context-retrieval.service.ts)
+  - [apps/mcp-server/src/enrichment/context-compression.service.ts](apps/mcp-server/src/enrichment/context-compression.service.ts)
+  - [apps/mcp-server/src/enrichment/prompt-enrichment.service.ts](apps/mcp-server/src/enrichment/prompt-enrichment.service.ts)
+  - [apps/mcp-server/src/enrichment/interaction-persistence.service.ts](apps/mcp-server/src/enrichment/interaction-persistence.service.ts)
+  - [apps/mcp-server/src/enrichment/embedding.service.ts](apps/mcp-server/src/enrichment/embedding.service.ts)
 
 ### 5) Reglas explícitas de ahorro de tokens (obligatorias)
 

@@ -1,8 +1,6 @@
-import { z } from 'zod/v4';
+import type { z } from 'zod/v4';
 
-export const DeleteProjectMemoryInputSchema = z.object({
-  projectName: z.string().min(1),
-});
+import { DeleteProjectMemoryInputSchema } from '../schemas/delete-project-memory.schema';
 
 export type DeleteProjectMemoryInput = z.infer<typeof DeleteProjectMemoryInputSchema>;
 

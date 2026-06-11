@@ -5,14 +5,14 @@ import { PostgresService } from '../../persistence/postgres/postgres.service';
 import { QdrantService } from '../../persistence/qdrant/qdrant.service';
 import { deterministicUuid } from '../../common/utils/identity.util';
 import { snippet } from '../../common/utils/text.util';
-import {
+import { ListProjectMemoryInputSchema } from '../schemas/list-project-memory.schema';
+import type {
   ListProjectMemoryConversation,
   ListProjectMemoryEvent,
   ListProjectMemoryInput,
-  ListProjectMemoryInputSchema,
   ListProjectMemoryOutput,
   ListProjectMemoryQdrantPoint,
-} from '../dto/list-project-memory.dto';
+} from '../types/list-project-memory.types';
 
 const DEFAULT_EVENT_LIMIT = 50;
 const DEFAULT_SNIPPET_CHARS = 240;

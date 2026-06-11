@@ -4,11 +4,11 @@ import { Tool } from '@rekog/mcp-nest';
 import { PostgresService } from '../../persistence/postgres/postgres.service';
 import { QdrantService } from '../../persistence/qdrant/qdrant.service';
 import { deterministicUuid } from '../../common/utils/identity.util';
-import {
+import { DeleteProjectMemoryInputSchema } from '../schemas/delete-project-memory.schema';
+import type {
   DeleteProjectMemoryInput,
-  DeleteProjectMemoryInputSchema,
   DeleteProjectMemoryOutput,
-} from '../dto/delete-project-memory.dto';
+} from '../types/delete-project-memory.types';
 
 @Injectable()
 export class DeleteProjectMemoryTool {

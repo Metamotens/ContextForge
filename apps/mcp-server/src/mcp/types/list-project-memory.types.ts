@@ -1,11 +1,6 @@
-import { z } from 'zod/v4';
+import type { z } from 'zod/v4';
 
-export const ListProjectMemoryInputSchema = z.object({
-  projectName: z.string().min(1),
-  eventLimit: z.number().int().positive().max(500).optional(),
-  includePayload: z.boolean().optional(),
-  contentSnippetChars: z.number().int().nonnegative().max(2000).optional(),
-});
+import { ListProjectMemoryInputSchema } from '../schemas/list-project-memory.schema';
 
 export type ListProjectMemoryInput = z.infer<typeof ListProjectMemoryInputSchema>;
 

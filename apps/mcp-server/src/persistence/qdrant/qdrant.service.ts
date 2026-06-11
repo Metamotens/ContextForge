@@ -1,44 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { QdrantClient } from '@qdrant/js-client-rest';
 
-interface SummaryPayload extends Record<string, unknown> {
-  project_id: string;
-  conversation_id: string;
-  provider: string;
-  user_name: string;
-  created_at: string;
-  is_summary: boolean;
-  summary_text: string;
-}
-
-export interface IndexSummaryInput {
-  eventId: string;
-  projectId: string;
-  conversationId: string;
-  provider: string;
-  userName: string;
-  createdAtIso: string;
-  vector: number[];
-  summaryText: string;
-}
-
-interface SearchSummariesInput {
-  projectId: string;
-  conversationId?: string;
-  queryVector: number[];
-  topK?: number;
-}
-
-interface ScrollByProjectIdInput {
-  projectId: string;
-  limit?: number;
-  withPayload?: boolean;
-}
-
-export interface ScrolledSummaryPoint {
-  id: string;
-  payload: SummaryPayload;
-}
+import type {
+  IndexSummaryInput,
+  ScrollByProjectIdInput,
+  ScrolledSummaryPoint,
+  SearchSummariesInput,
+  SummaryPayload,
+} from '../types/qdrant.types';
 
 @Injectable()
 export class QdrantService {

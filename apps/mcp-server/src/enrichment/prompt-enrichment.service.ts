@@ -1,17 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { ContextRetrievalService, ContextSearchResult } from '../retrieval/context-retrieval.service';
-import { ContextCompressionService, CompressedContext } from './context-compression.service';
 
-export interface EnrichmentInput {
-  projectName: string;
-  query: string;
-  conversationId?: string;
-  topK?: number;
-}
-
-export interface EnrichmentOutput extends CompressedContext {
-  results: ContextSearchResult[];
-}
+import { ContextCompressionService } from './context-compression.service';
+import { ContextRetrievalService } from '../retrieval/context-retrieval.service';
+import type { EnrichmentInput, EnrichmentOutput } from './types/enrichment.types';
 
 @Injectable()
 export class PromptEnrichmentService {
