@@ -21,13 +21,40 @@ jobs:
         with:
           version: 10.16.1
 
-      - name: Show versions
+      - name: Versions
         run: |
           node -v
           pnpm -v
 
-      - name: Install dependencies
+      - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Build workspace
-        run: pnpm build
+      - name: Build Core
+        run: pnpm --filter @contextforge/core build
+
+      - name: Debug Core Dist
+        run: |
+          echo "=== CORE DIST ==="
+          find packages/core/dist -type f || true
+
+          echo ""
+          echo "=== CORE PACKAGE ==="
+          cat packages/core/package.json
+
+      - name: Check Workspace Links
+        run: |
+          echo "=== MCP NODE_MODULES ==="
+          ls -la apps/mcp-server/node_modules/@contextforge || true
+
+          echo ""
+          echo "=== API NODE_MODULES ==="
+          ls -la apps/api/node_modules/@contextforge || true
+
+      - name: Build Shared
+        run: pnpm --filter @contextforge/shared build
+
+      - name: Build MCP
+        run: pnpm --filter @contextforge/mcp-server build
+
+      - name: Build API
+        run: pnpm --filter @contextforge/api build
