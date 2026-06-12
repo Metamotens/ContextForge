@@ -1,0 +1,24 @@
+name: Test Runner
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: self-hosted
+
+    steps:
+      - name: Hostname
+        run: hostname
+
+      - name: User
+        run: whoami
+
+      - name: Docker
+        run: docker --version
+
+      - name: NVIDIA
+        run: nvidia-smi
+
+      - name: Network
+        run: docker network ls
