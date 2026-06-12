@@ -11,17 +11,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup PNPM
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.16.1
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-
       - name: Versions
         run: |
           node -v
@@ -29,6 +18,51 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Debug workspace
+        run: |
+          echo "=== PWD ==="
+          pwd
+
+          echo ""
+          echo "=== WORKSPACE ==="
+          cat pnpm-workspace.yaml
+
+          echo ""
+          echo "=== ROOT PACKAGE ==="
+          cat package.json
+
+          echo ""
+          echo "=== CORE PACKAGE ==="
+          cat packages/core/package.json
+
+          echo ""
+          echo "=== SHARED PACKAGE ==="
+          cat packages/shared/package.json
+
+          echo ""
+          echo "=== MCP PACKAGE ==="
+          cat apps/mcp-server/package.json
+
+          echo ""
+          echo "=== API PACKAGE ==="
+          cat apps/api/package.json
+
+          echo ""
+          echo "=== MCP NODE_MODULES ==="
+          ls -la apps/mcp-server/node_modules/@contextforge || true
+
+          echo ""
+          echo "=== API NODE_MODULES ==="
+          ls -la apps/api/node_modules/@contextforge || true
+
+          echo ""
+          echo "=== ROOT NODE_MODULES ==="
+          ls -la node_modules/@contextforge || true
+
+          echo ""
+          echo "=== INSTALLED WORKSPACE PACKAGES ==="
+          pnpm list -r
 
       - name: Build
         run: pnpm build
