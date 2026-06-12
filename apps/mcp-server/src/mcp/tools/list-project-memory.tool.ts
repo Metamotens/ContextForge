@@ -1,8 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Tool } from '@rekog/mcp-nest';
 
-import { deterministicUuid } from '@common/utils/identity.util';
-import { snippet } from '@common/utils/text.util';
+import { deterministicUuid, PgVectorService, PostgresService, snippet } from '@contextforge/core';
 import { ListProjectMemoryInputSchema } from '@mcp/schemas/list-project-memory.schema';
 import type {
   ListProjectMemoryConversation,
@@ -11,8 +10,6 @@ import type {
   ListProjectMemoryOutput,
   ListProjectMemoryVectorPoint,
 } from '@mcp/types/list-project-memory.types';
-import { PgVectorService } from '@persistence/pgvector/pgvector.service';
-import { PostgresService } from '@persistence/postgres/postgres.service';
 
 const DEFAULT_EVENT_LIMIT = 50;
 const DEFAULT_SNIPPET_CHARS = 240;
@@ -107,5 +104,4 @@ export class ListProjectMemoryTool {
       warnings,
     };
   }
-
 }

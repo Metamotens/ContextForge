@@ -5,29 +5,23 @@
   "packageManager": "pnpm@10.16.1",
   "description": "ContextForge MCP server (NestJS)",
   "imports": {
-    "@common/*": "./src/common/*",
-    "@persistence/*": "./src/persistence/*",
-    "@retrieval/*": "./src/retrieval/*",
-    "@enrichment/*": "./src/enrichment/*",
     "@mcp/*": "./src/mcp/*",
-    "@config/*": "./src/config/*",
     "@app/*": "./src/*"
   },
   "scripts": {
     "start": "node dist/main.js",
     "build": "tsc -p tsconfig.json && tsc-alias -p tsconfig.json",
     "start:dev": "pnpm dev:ts src/main.ts",
-    "dev:ts": "node --env-file=../../.env -r tsconfig-paths/register -r ts-node/register",
+    "dev:ts": "cross-env TS_NODE_PROJECT=tsconfig.dev.json node --env-file=../../.env -r tsconfig-paths/register -r ts-node/register",
     "db:init": "pnpm dev:ts src/scripts/db-init.ts",
     "db:smoke": "pnpm dev:ts src/scripts/smoke-test.ts",
-    "test:e2e": "pnpm dev:ts src/scripts/smoke-summary.ts",
-    "format": "prettier --write ."
+    "test:e2e": "pnpm dev:ts src/scripts/smoke-summary.ts"
   },
   "dependencies": {
+    "@contextforge/core": "workspace:*",
     "@nestjs/common": "^11.1.26",
     "@nestjs/core": "^11.1.26",
     "@rekog/mcp-nest": "^1.9.10",
-    "pg": "^8.13.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "zod": "^4.1.5"
@@ -36,7 +30,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/node": "^22.19.20",
     "@types/pg": "^8.11.10",
-    "prettier": "^3.8.4",
+    "cross-env": "^7.0.3",
     "ts-node": "^10.9.2",
     "tsc-alias": "^1.8.17",
     "tsconfig-paths": "^4.2.0",

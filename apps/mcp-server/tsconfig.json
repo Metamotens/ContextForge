@@ -1,32 +1,18 @@
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "module": "NodeNext",
-    "declaration": false,
-    "removeComments": true,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "allowSyntheticDefaultImports": true,
-    "target": "ES2021",
-    "sourceMap": true,
     "outDir": "./dist",
     "rootDir": "./src",
-    "incremental": true,
-    "strict": true,
-    "moduleResolution": "nodenext",
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "types": ["node"],
     "baseUrl": "./src",
+    "types": ["node"],
     "paths": {
-      "@common/*": ["common/*"],
-      "@persistence/*": ["persistence/*"],
-      "@retrieval/*": ["retrieval/*"],
-      "@enrichment/*": ["enrichment/*"],
       "@mcp/*": ["mcp/*"],
-      "@config/*": ["config/*"],
       "@app/*": ["*"]
     }
   },
+  "references": [
+    { "path": "../../packages/core" }
+  ],
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

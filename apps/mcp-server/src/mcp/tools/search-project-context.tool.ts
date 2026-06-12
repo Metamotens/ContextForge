@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Tool } from '@rekog/mcp-nest';
 
-import { PromptEnrichmentService } from '@enrichment/prompt-enrichment.service';
+import { PromptEnrichmentService } from '@contextforge/core';
 import { SearchProjectContextInputSchema } from '@mcp/schemas/search-project-context.schema';
 import type {
   SearchProjectContextInput,

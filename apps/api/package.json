@@ -1,0 +1,30 @@
+{
+  "name": "@contextforge/api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ContextForge REST API (NestJS HTTP)",
+  "scripts": {
+    "start": "node dist/main.js",
+    "build": "tsc -p tsconfig.json && tsc-alias -p tsconfig.json",
+    "start:dev": "pnpm dev:ts src/main.ts",
+    "dev:ts": "cross-env TS_NODE_PROJECT=tsconfig.dev.json node --env-file=../../.env -r tsconfig-paths/register -r ts-node/register"
+  },
+  "dependencies": {
+    "@contextforge/core": "workspace:*",
+    "@contextforge/shared": "workspace:*",
+    "@nestjs/common": "^11.1.26",
+    "@nestjs/core": "^11.1.26",
+    "@nestjs/platform-express": "^11.1.26",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.19.20",
+    "cross-env": "^7.0.3",
+    "ts-node": "^10.9.2",
+    "tsc-alias": "^1.8.17",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.9.3"
+  }
+}

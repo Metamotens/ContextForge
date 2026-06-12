@@ -1,0 +1,17 @@
+{
+  "name": "@contextforge/root",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.16.1",
+  "scripts": {
+    "build": "pnpm --filter @contextforge/core build && pnpm --filter @contextforge/shared build && pnpm --filter @contextforge/mcp-server build && pnpm --filter @contextforge/api build",
+    "build:core": "pnpm --filter @contextforge/core build",
+    "dev:api": "pnpm --filter @contextforge/api start:dev",
+    "dev:mcp": "pnpm --filter @contextforge/mcp-server start:dev",
+    "format": "prettier --write \"**/*.{ts,json,md}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.8.4",
+    "typescript": "^5.9.3"
+  }
+}

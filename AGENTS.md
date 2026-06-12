@@ -13,6 +13,8 @@ Do not put workflow instructions here — those belong in each skill's `SKILL.md
 
 | Skill | Path | Description |
 |-------|------|-------------|
+| antfu | [skills/antfu/SKILL.md](skills/antfu/SKILL.md) | Anthony Fu's preferences for pnpm monorepos, ESLint, Vitest, and library/app setup |
+| pnpm | [skills/pnpm/SKILL.md](skills/pnpm/SKILL.md) | pnpm workspaces, filtering, workspace protocol, and monorepo best practices |
 | nestjs-best-practices | [skills/nestjs-best-practices/SKILL.md](skills/nestjs-best-practices/SKILL.md) | NestJS best practices and architecture patterns for modules, DI, security, and performance |
 | postgresql-code-review | [skills/postgresql-code-review/SKILL.md](skills/postgresql-code-review/SKILL.md) | PostgreSQL code review: JSONB, arrays, schema design, RLS, and anti-patterns |
 | postgresql-optimization | [skills/postgresql-optimization/SKILL.md](skills/postgresql-optimization/SKILL.md) | PostgreSQL optimization: query tuning, indexes, advanced types, and performance monitoring |

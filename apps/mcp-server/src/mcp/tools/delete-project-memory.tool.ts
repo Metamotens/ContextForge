@@ -1,13 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { Tool } from '@rekog/mcp-nest';
 
-import { deterministicUuid } from '@common/utils/identity.util';
+import { deterministicUuid, PostgresService } from '@contextforge/core';
 import { DeleteProjectMemoryInputSchema } from '@mcp/schemas/delete-project-memory.schema';
 import type {
   DeleteProjectMemoryInput,
   DeleteProjectMemoryOutput,
 } from '@mcp/types/delete-project-memory.types';
-import { PostgresService } from '@persistence/postgres/postgres.service';
 
 @Injectable()
 export class DeleteProjectMemoryTool {

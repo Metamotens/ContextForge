@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Tool } from '@rekog/mcp-nest';
 
-import { InteractionPersistenceService } from '@enrichment/interaction-persistence.service';
+import { InteractionPersistenceService } from '@contextforge/core';
 import { SaveInteractionMemoryInputSchema } from '@mcp/schemas/save-interaction-memory.schema';
 import type {
   SaveInteractionMemoryInput,

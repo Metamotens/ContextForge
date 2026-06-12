@@ -1,10 +1,8 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 
+import { deterministicUuid, InteractionPersistenceService, PromptEnrichmentService } from '@contextforge/core';
 import { AppModule } from '@app/app.module';
-import { deterministicUuid } from '@common/utils/identity.util';
-import { InteractionPersistenceService } from '@enrichment/interaction-persistence.service';
-import { PromptEnrichmentService } from '@enrichment/prompt-enrichment.service';
 import { StepResult, closePsqlPool, execPsql } from '@app/scripts/smoke-helpers';
 
 const PROJECT_NAME = 'smoke-summary';

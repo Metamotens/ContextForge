@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 
+import { EnrichmentModule, PgVectorModule, PostgresModule } from '@contextforge/core';
+
 import { McpServerModule } from '@mcp/mcp.module';
-import { PgVectorModule } from '@persistence/pgvector/pgvector.module';
-import { PostgresModule } from '@persistence/postgres/postgres.module';
 
 @Module({
-  imports: [PostgresModule, PgVectorModule, McpServerModule],
+  imports: [PostgresModule, PgVectorModule, EnrichmentModule, McpServerModule],
 })
 export class AppModule {}

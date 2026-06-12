@@ -1,25 +1,31 @@
 ---
 name: sdd-phase-plan
-overview: "Implementar un MVP SDD en dos fases: primero enriquecimiento de prompts con MCP + memoria local optimizada para costo/tokens, luego orquestación de subagentes por tarea para repartir contexto."
+overview: "MVP SDD en dos fases: Fase 1 memoria MCP + retrieval con pgvector; extensión monorepo con API REST para observabilidad y futuro dashboard Angular; Fase 2 orquestación de subagentes."
 todos:
   - id: bootstrap-local-stack
-    content: Definir stack local con docker-compose (PostgreSQL + Qdrant) y variables base
+    content: Stack local PostgreSQL (+ pgvector) y Ollama; variables en .env raíz
     status: completed
   - id: build-mcp-server-skeleton
-    content: Crear esqueleto NestJS MCP y registro de tools iniciales
+    content: Servidor NestJS MCP (STDIO) y registro de tools
     status: completed
   - id: implement-minimal-data-model
-    content: Implementar modelo de datos mínimo (projects, conversations, prompt_events) y migraciones
+    content: Modelo mínimo (projects, conversations, prompt_events) + schema.sql
     status: completed
   - id: implement-summary-indexing
-    content: Implementar creación de resúmenes e indexación en Qdrant solo cuando is_summary=true
+    content: Resúmenes LLM e indexación vectorial en pgvector (solo is_summary=true)
     status: completed
   - id: implement-context-retrieval-flow
-    content: Implementar search_project_context con filtros por project_id y topK bajo adaptativo
+    content: search_project_context con topK adaptativo y presupuesto de tokens
     status: completed
   - id: validate-e2e-mvp
-    content: Validar flujo E2E IDE->MCP->Qdrant/Postgres->respuesta enriquecida y persistencia
+    content: Smoke E2E IDE→MCP→Postgres/pgvector→contexto enriquecido
     status: completed
+  - id: monorepo-restructure
+    content: pnpm workspace, packages/core, packages/shared, apps/api REST
+    status: completed
+  - id: dashboard-angular
+    content: App Angular en apps/dashboard consumiendo API + shared DTOs
+    status: pending
   - id: phase2-subagents-design
     content: Diseñar fase 2 con supervisor-workers y consolidación compacta
     status: pending
@@ -30,414 +36,321 @@ isProject: false
 
 ## Decisiones cerradas
 
-- Interceptación en **modo MCP-first** (sin proxy global), para mantener compatibilidad multi-IDE (`Cursor`, `Claude Code`, `OpenCode`, VS Code con cliente MCP).
-- Base relacional en **PostgreSQL local (Docker)** en Fase 1, con diseño preparado para migración posterior a cloud.
+- Interceptación en **modo MCP-first** (sin proxy global), compatible multi-IDE (`Cursor`, `Claude Code`, `OpenCode`, VS Code con cliente MCP).
+- Base relacional en **PostgreSQL local** con extensión **pgvector** (sin Qdrant en la implementación actual).
+- **Monorepo pnpm** (`apps/*`, `packages/*`); sin Nx.
+- Lógica de negocio compartida en **`@contextforge/core`**; contrato REST en **`@contextforge/shared`**.
 - Objetivo principal: **minimizar tokens y costo** por interacción sin perder calidad de respuesta.
-- Retención en `prompt_events`: **ilimitada** (máxima trazabilidad histórica).
-- Estrategia de vectorización Fase 1: **solo resúmenes útiles de conversación** (sin tabla extra de conocimiento en esta fase).
+- Retención en `prompt_events`: **ilimitada**.
+- Estrategia de vectorización: **solo resúmenes** (`is_summary=true`); embeddings en columna `prompt_events.embedding`.
+- **API HTTP** separada del MCP (`apps/api`) para observabilidad y futuro dashboard Angular.
+- `.env` en la **raíz del repo**; apps lo cargan vía `--env-file=../../.env`.
 
 ## Alcance
 
-- **Fase 1 (MVP):** capturar contexto del prompt, recuperar conocimiento existente del proyecto, enriquecer contexto, responder y persistir aprendizaje.
-- **Fase 2:** introducir subagentes por tarea para repartir contexto y devolver síntesis compacta al agente principal.
+- **Fase 1 (MVP):** capturar contexto, recuperar memoria del proyecto, enriquecer prompt, persistir aprendizaje vía MCP.
+- **Fase 1.5 (hecho):** monorepo + API REST de observabilidad.
+- **Fase 1.6 (pendiente):** dashboard Angular en `apps/dashboard`.
+- **Fase 2:** subagentes por tarea para repartir contexto y devolver síntesis compacta.
 
 ## Estructura del proyecto (actual)
 
 ```text
 ContextForge/
-  docker-compose.yml          # postgres, qdrant, ollama
-  .env
-  plans/
-    specifications.md
-    types-por-modulo.md
-  apps/
-    mcp-server/
-      package.json
-      tsconfig.json
-      src/
-        main.ts
-        app.module.ts
-        common/
-          types/                # tipos compartidos entre módulos
-            context-search-result.types.ts
-            context-enrichment.types.ts
-          utils/
-        mcp/
-          mcp.module.ts
-          schemas/              # Zod (validación MCP)
-            *.schema.ts
-          types/                # tipos inferidos y outputs MCP
-            *.types.ts
-          tools/
-            *.tool.ts
-        persistence/
-          types/
-            postgres.types.ts
-            qdrant.types.ts
-          postgres/
-          qdrant/
-        retrieval/
-          types/
-            context-search.types.ts
-            summary.types.ts
-          context-retrieval.service.ts
-          summary.service.ts
-        enrichment/
-          types/
-            enrichment.types.ts
-            interaction-persistence.types.ts
-          embedding.service.ts
-          context-compression.service.ts
-          prompt-enrichment.service.ts
-          interaction-persistence.service.ts
-        scripts/
-          smoke-test.ts
-          smoke-summary.ts
-        config/
-          token-budget.config.ts
-      test/
-        unit/
-        e2e/
+├── pnpm-workspace.yaml       # apps/* + packages/*
+├── package.json              # @contextforge/root — scripts build/dev/format
+├── tsconfig.base.json        # opciones TS compartidas
+├── .prettierrc               # Prettier global
+├── .prettierignore
+├── .env                      # variables compartidas (raíz)
+├── AGENTS.md                 # índice de agent skills
+├── plans/
+│   ├── specifications.md
+│   └── resumenes-llm-ollama.md
+├── skills/                   # skills del proyecto (nestjs, pnpm, antfu, postgresql…)
+│
+├── packages/
+│   ├── core/                 # @contextforge/core — lógica compartida
+│   │   └── src/
+│   │       ├── common/       # tipos y utils compartidos
+│   │       ├── config/       # token-budget, summary
+│   │       ├── persistence/  # PostgresService, PgVectorService + módulos
+│   │       ├── enrichment/   # embedding, summary LLM, persistencia, retrieval
+│   │       ├── retrieval/    # ContextRetrievalService, SummaryService
+│   │       └── index.ts      # barrel público del paquete
+│   │
+│   └── shared/               # @contextforge/shared — DTOs REST (API ↔ Angular)
+│       └── src/
+│           ├── project.dto.ts
+│           ├── conversation.dto.ts
+│           ├── prompt-event.dto.ts
+│           ├── stats.dto.ts
+│           ├── search.dto.ts
+│           ├── health.dto.ts
+│           └── index.ts        # re-exports (sin definir tipos inline)
+│
+└── apps/
+    ├── mcp-server/           # @contextforge/mcp-server — MCP STDIO
+    │   └── src/
+    │       ├── main.ts       # createApplicationContext, transport STDIO
+    │       ├── app.module.ts
+    │       ├── db/schema.sql
+    │       ├── mcp/
+    │       │   ├── mcp.module.ts
+    │       │   ├── schemas/  # Zod (validación MCP)
+    │       │   ├── types/    # tipos inferidos de schemas
+    │       │   └── tools/    # 4 MCP tools
+    │       └── scripts/      # db-init, smoke-test, smoke-summary
+    │
+    ├── api/                  # @contextforge/api — NestJS HTTP REST
+    │   └── src/
+    │       ├── main.ts       # app.listen(), prefix /api
+    │       ├── app.module.ts
+    │       ├── health/       # HealthModule
+    │       ├── stats/        # StatsModule
+    │       └── projects/     # ProjectsModule
+    │
+    └── dashboard/            # (futuro) Angular observabilidad
 ```
 
-### Organización de tipos y contratos
+### Flujo de dependencias
 
-Plan de referencia: [types-por-modulo.md](types-por-modulo.md).
+```mermaid
+graph TD
+  mcpServer["apps/mcp-server"] --> core["packages/core"]
+  api["apps/api"] --> core
+  api --> shared["packages/shared"]
+  dashboard["apps/dashboard"] --> shared
+  core --> postgres[("PostgreSQL + pgvector")]
+  ollama[("Ollama")] --> core
+```
+
+### Scripts raíz (`package.json`)
+
+| Script | Descripción |
+|--------|-------------|
+| `pnpm build` | Build core → shared → mcp-server → api |
+| `pnpm dev:mcp` | MCP server en dev (ts-node) |
+| `pnpm dev:api` | API HTTP en dev (puerto `API_PORT`, default 3000) |
+| `pnpm format` | Prettier en todo el monorepo |
+
+Scripts por app (desde cada `apps/*` o vía filter):
+
+| App | Scripts relevantes |
+|-----|-------------------|
+| `mcp-server` | `db:init`, `db:smoke`, `test:e2e` (smoke-summary) |
+| `core` | `build` (tsc composite → `dist/`) |
+| `shared` | `build` (tsc composite → `dist/`) |
+
+## Organización de tipos y contratos
 
 | Capa | Ubicación | Contiene |
 |------|-----------|----------|
-| Compartido | `common/types/` | Tipos usados por 2+ módulos (`ContextSearchResult`, `CompressedContext`) |
-| Persistencia | `persistence/types/` | Contratos Postgres y Qdrant |
-| Retrieval | `retrieval/types/` | Búsqueda de contexto y resúmenes |
-| Enrichment | `enrichment/types/` | Enriquecimiento y persistencia de interacciones |
-| Borde MCP (schemas) | `mcp/schemas/*.schema.ts` | Esquemas Zod (`*Schema`) |
-| Borde MCP (tipos) | `mcp/types/*.types.ts` | `z.infer` y outputs de tools |
-| Servicios | `*/` junto a su `types/` | Solo lógica; importan de su módulo o `common/types/` |
-| Tools MCP | `mcp/tools/` | Importan de `schemas/` + `types/` |
+| Core compartido | `packages/core/src/common/types/` | `ContextSearchResult`, `CompressedContext` |
+| Persistencia | `packages/core/src/persistence/types/` | Contratos Postgres y pgvector |
+| Retrieval | `packages/core/src/retrieval/types/` | Búsqueda y resúmenes |
+| Enrichment | `packages/core/src/enrichment/types/` | Enriquecimiento y persistencia |
+| REST (API ↔ UI) | `packages/shared/src/*.dto.ts` | DTOs HTTP (`ProjectDto`, `ConversationDto`, …) |
+| Borde MCP (schemas) | `apps/mcp-server/src/mcp/schemas/` | Esquemas Zod |
+| Borde MCP (tipos) | `apps/mcp-server/src/mcp/types/` | `z.infer` y outputs de tools |
 
 Reglas:
 
-- **Servicios** (`@Injectable`): no exportan `interface` ni `type` de contrato.
-- **`common/types/`** no importa de feature modules (sin dependencias invertidas).
-- **Import cruzado** entre features permitido vía `common/types/` o importando el `types/` del módulo dueño (ej. enrichment → `persistence/types/qdrant.types`).
-- **Sin barrel `index.ts` global** — import por archivo concreto.
-- **Excepción**: `StepResult` en `scripts/smoke-helpers.ts` (utilidad de test).
+- **`@contextforge/core`**: servicios NestJS, módulos globales (`PostgresModule`, `PgVectorModule`, `EnrichmentModule`), utilidades. Export vía `packages/core/src/index.ts`.
+- **`@contextforge/shared`**: solo tipos/DTOs del contrato REST; un archivo por entidad; `index.ts` solo re-exporta.
+- **`apps/mcp-server`**: borde MCP (tools, schemas, scripts). Importa `@contextforge/core`.
+- **`apps/api`**: controllers + services por feature module. Importa `@contextforge/core` y `@contextforge/shared`.
+- Servicios `@Injectable` en core no exportan contratos desde archivos de servicio; tipos viven en `{module}/types/` o en `shared`.
 
-### Path aliases (imports)
+### TypeScript y path aliases
 
-Definidos en `apps/mcp-server/tsconfig.json` (`paths`) y `package.json` (`imports`):
+**Base:** `tsconfig.base.json` (sin `types: node` global).
 
-| Alias | Resuelve a |
-|-------|------------|
-| `@common/*` | `src/common/*` |
-| `@persistence/*` | `src/persistence/*` |
-| `@retrieval/*` | `src/retrieval/*` |
-| `@enrichment/*` | `src/enrichment/*` |
-| `@mcp/*` | `src/mcp/*` |
-| `@config/*` | `src/config/*` |
-| `@app/*` | `src/*` (raíz: `main.ts`, `app.module.ts`, `scripts/`) |
+| Paquete/App | Config | Notas |
+|-------------|--------|-------|
+| `packages/core` | `tsconfig.json` | `composite: true`, emite `dist/` + `.d.ts` |
+| `packages/shared` | `tsconfig.json` | `composite: true`, sin `@types/node` |
+| `apps/mcp-server` | `tsconfig.json` + `tsconfig.dev.json` | Project reference → core; dev usa paths a source de core |
+| `apps/api` | `tsconfig.json` + `tsconfig.dev.json` | Project references → core + shared |
 
-- **Build**: `tsc` + `tsc-alias` reescribe alias a rutas relativas en `dist/`.
-- **Dev / smoke**: `tsconfig-paths/register` antes de `ts-node/register`.
+**Aliases locales (solo en apps):**
+
+| Alias | App | Resuelve a |
+|-------|-----|------------|
+| `@mcp/*` | mcp-server | `src/mcp/*` |
+| `@app/*` | mcp-server | `src/*` |
+| `@api/*` | api | `src/*` |
+
+**Dependencias workspace:** `"@contextforge/core": "workspace:*"` en `package.json` de cada app.
+
+**Build apps:** `tsc` + `tsc-alias`. **Dev:** `TS_NODE_PROJECT=tsconfig.dev.json` + `tsconfig-paths/register`.
+
+### MCP tools (`apps/mcp-server`)
+
+| Tool | Rol |
+|------|-----|
+| `search_project_context` | Búsqueda semántica + `contextBlock` con presupuesto de tokens |
+| `save_interaction_memory` | Persistir turno; dispara resumen + embedding si umbral |
+| `list_project_memory` | Inspección read-only de memoria del proyecto |
+| `delete_project_memory` | Borrado completo del proyecto (CASCADE) |
+
+### API REST (`apps/api`, prefijo `/api`)
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `GET` | `/health` | Liveness; ping a PostgreSQL |
+| `GET` | `/stats` | Estadísticas globales |
+| `GET` | `/projects` | Listar proyectos |
+| `GET` | `/projects/:id` | Detalle de proyecto |
+| `GET` | `/projects/:id/stats` | Contadores del proyecto |
+| `GET` | `/projects/:id/conversations` | Conversaciones del proyecto |
+| `GET` | `/projects/:id/events?limit=` | Eventos recientes |
+| `GET` | `/projects/:id/search?q=` | Búsqueda semántica (misma lógica que MCP) |
+
+Organización NestJS: módulos por feature (`HealthModule`, `StatsModule`, `ProjectsModule`); módulos globales de core importados una vez en `AppModule`.
 
 ### Embeddings (proveedor configurable)
 
 - Default dev: **Ollama** (`EMBEDDING_PROVIDER=ollama`, `nomic-embed-text`, 768 dims).
 - Producción opcional: **OpenAI** (`EMBEDDING_PROVIDER=openai`, `text-embedding-3-small`, 1536 dims).
-- Qdrant recrea la colección automáticamente si cambia `EMBEDDING_VECTOR_SIZE`.
+- Dimensión alineada con columna `prompt_events.embedding vector(768)` en schema (ajustar si cambia modelo).
 
 ## Modelos de tablas PostgreSQL (Fase 1)
+
+Schema aplicable: [apps/mcp-server/src/db/schema.sql](../apps/mcp-server/src/db/schema.sql) (`pnpm db:init` desde mcp-server).
 
 ### Principios de diseño
 
 - Minimizar tablas y campos: persistir solo lo imprescindible para enriquecer prompts.
-- Evitar complejidad temprana: métricas avanzadas, cache semántica y logs detallados pasan a una fase posterior.
+- Evitar complejidad temprana: métricas avanzadas y cache semántica en iteraciones posteriores.
 - Preparar migración cloud: IDs UUID, timestamps UTC y relaciones simples.
 
 ### 1) `projects`
 
 - **Objetivo:** identificar el proyecto.
-- **Campos:**
-  - `id` UUID PK
-  - `name` VARCHAR(180) NOT NULL
-  - `created_at` TIMESTAMPTZ NOT NULL DEFAULT now()
-- **Índices:** `(name)` opcional si quieres evitar duplicados por nombre
+- **Campos:** `id` UUID PK, `name` VARCHAR(180), `created_at` TIMESTAMPTZ.
 
 ### 2) `conversations`
 
-- **Objetivo:** agrupar eventos de prompt/respuesta por sesión de trabajo.
-- **Campos:**
-  - `id` UUID PK
-  - `project_id` UUID NOT NULL FK -> `projects.id`
-  - `provider` VARCHAR(80) NOT NULL (`cursor`, `claude-code`, `opencode`, etc.)
-  - `user_name` VARCHAR(120) NOT NULL
-  - `created_at` TIMESTAMPTZ NOT NULL DEFAULT now()
-  - `updated_at` TIMESTAMPTZ NOT NULL DEFAULT now()
-- **Índices:** `(project_id, created_at DESC)`
+- **Objetivo:** agrupar eventos por sesión de trabajo.
+- **Campos:** `id`, `project_id` FK, `provider`, `user_name`, `created_at`, `updated_at`.
+- **Índices:** `(project_id, created_at DESC)`.
 
 ### 3) `prompt_events`
 
-- **Objetivo:** guardar cada turno de conversación de forma simple.
-- **Campos:**
-  - `id` UUID PK
-  - `conversation_id` UUID NOT NULL FK
-  - `role` VARCHAR(20) NOT NULL (`user`, `assistant`, `system`)
-  - `content` TEXT NOT NULL
-  - `is_summary` BOOLEAN NOT NULL DEFAULT false
-  - `created_at` TIMESTAMPTZ NOT NULL DEFAULT now()
-- **Índices:** `(conversation_id, created_at ASC)`, `(conversation_id, is_summary)`
-- **Política de retención:** ilimitada (con opción futura de archivado en frío por partición temporal).
+- **Objetivo:** guardar cada turno y resúmenes.
+- **Campos:** `id`, `conversation_id` FK, `role`, `content`, `is_summary`, `created_at`, **`embedding vector(768)`** (nullable; solo resúmenes indexados).
+- **Índices:** `(conversation_id, created_at ASC)`, `(conversation_id, is_summary)`, HNSW cosine en `embedding` donde `is_summary=true`.
+- **Retención:** ilimitada.
 
-## Estrategia de indexación vectorial (Fase 1 simplificada)
+## Estrategia de indexación vectorial (pgvector)
 
-- Indexar en Qdrant únicamente:
-  - eventos `prompt_events` con `is_summary=true`.
-- Generación de resumen:
-  - cada X turnos, crear un resumen corto y accionable y guardarlo como `prompt_event` resumido.
-- No indexar por defecto:
-  - turnos crudos completos.
-- Beneficio esperado:
-  - buena precisión inicial con complejidad baja y costo de embeddings controlado.
+> **Nota:** el plan original contemplaba Qdrant; la implementación usa **pgvector dentro de PostgreSQL**.
 
-### Especificación Qdrant (cerrada para Fase 1)
-
-- **Colección única:** `conversation_summaries`
-- **Distance metric:** `Cosine`
-- **Vector size:** definido por el modelo de embeddings elegido en runtime (variable de entorno).
-- **Punto Qdrant (`id`):**
-  - usar el mismo UUID de `prompt_events.id` cuando `is_summary=true`.
-- **Payload obligatorio:**
-  - `project_id` (UUID)
-  - `conversation_id` (UUID)
-  - `provider` (string)
-  - `user_name` (string)
-  - `created_at` (timestamp ISO)
-  - `is_summary` (bool, siempre `true` en esta colección)
-- **Payload opcional:**
-  - `summary_kind` (`rolling`, `milestone`, `final`)
-  - `tags` (array string)
+- Embeddings en **`prompt_events.embedding`** solo para filas con `is_summary=true`.
+- Búsqueda: cosine distance (`<=>`) vía `PgVectorService.searchSummaries`.
+- Metadatos de conversación/proyecto: JOIN con `conversations` / `projects` (no payload Qdrant separado).
+- `summary_kind` (`rolling`, `milestone`, `final`) se usa en lógica de indexación, no como columna DB.
 
 ### Reglas de indexación
 
-- Se indexa **solo** cuando se crea un `prompt_event` con:
-  - `role='system'`
-  - `is_summary=true`
-- No se indexa:
-  - `role='user'` o `role='assistant'`
-  - cualquier evento con `is_summary=false`
-- Frecuencia de resumen:
-  - cada 8 turnos (`SUMMARY_TURN_THRESHOLD`), o
-  - cuando el acumulado estimado supere 4000 tokens (`SUMMARY_TOKEN_THRESHOLD`).
+- Se genera embedding **solo** para eventos con `is_summary=true` (resúmenes rolling o milestone).
+- No se indexan turnos `user` / `assistant` crudos.
+- Umbrales de resumen rolling:
+  - `SUMMARY_TURN_THRESHOLD` (default 8), o
+  - `SUMMARY_TOKEN_THRESHOLD` (default 4000 tokens estimados).
 
 ### Generación de resumen (LLM Ollama rolling)
 
-- **Tipo:** LLM chat vía Ollama (`/api/chat`), no determinístico.
-- **Estrategia rolling:** incluye el último resumen previo + todos los turnos user/assistant desde ese resumen.
-- **Servicio:** `SummaryLlmService` (`enrichment/summary-llm.service.ts`).
-- **Config:** `OLLAMA_CHAT_MODEL` (default `llama3.2`), `SUMMARY_MAX_OUTPUT_TOKENS` (512), `SUMMARY_LLM_TIMEOUT_MS` (60000).
-- **Fail-open:** si el LLM falla o timeout, el save del turno completa normalmente sin resumen; se loguea el error.
-- **`summary_kind` en Qdrant:** `rolling` para resúmenes auto-generados por umbral; `milestone` para resúmenes explícitos (`isSummary=true` en `save_interaction_memory`).
-- Plan de implementación detallado: [resumenes-llm-ollama.md](resumenes-llm-ollama.md).
+- **Servicio:** `SummaryLlmService` en `packages/core/src/enrichment/`.
+- **Config:** `OLLAMA_CHAT_MODEL` (default `qwen3:4b`), `SUMMARY_MAX_OUTPUT_TOKENS`, `SUMMARY_LLM_TIMEOUT_MS`.
+- **Fail-open:** fallo LLM no bloquea `save_interaction_memory`.
+- Detalle: [resumenes-llm-ollama.md](resumenes-llm-ollama.md).
 
-### Sincronización Postgres <-> Qdrant
+### Tolerancia a fallos (indexación)
 
-- **Insert resumen en Postgres exitoso** -> generar embedding -> upsert en Qdrant.
-- Si falla Qdrant:
-  - no romper conversación; registrar error en log de aplicación y reintentar en background.
-- Si se elimina conversación/proyecto:
-  - borrar en cascada en Postgres y ejecutar borrado por filtro en Qdrant (`project_id` / `conversation_id`).
-- Clave de consistencia:
-  - `prompt_events.id` como ID canónico también en Qdrant.
+- Fallo al escribir embedding → log + cola de reintento en `PgVectorService`.
+- Borrado de proyecto → CASCADE en Postgres (embeddings incluidos).
 
-### Búsqueda (search_project_context)
+### Búsqueda (`search_project_context` / API search)
 
-- Filtro obligatorio por `project_id`.
-- Filtro opcional por `conversation_id` (si la consulta es muy local a una conversación).
-- `topK` inicial bajo (ej. 3) y subir a 5 solo si la confianza semántica cae bajo umbral.
-- Devolver fragmentos resumidos, nunca turnos crudos completos.
+- Filtro por `project_id` (vía nombre de proyecto → UUID determinista).
+- Filtro opcional por `conversation_id`.
+- `topK` adaptativo (3 → 5 si baja confianza); umbral `SCORE_THRESHOLD`.
+- Presupuesto `MAX_CONTEXT_TOKENS`; snippets resumidos, nunca turnos crudos completos.
 
-## Relaciones clave (resumen)
+## Relaciones clave
 
 ```mermaid
 flowchart LR
   Projects[projects] --> Conversations[conversations]
-  Conversations --> PromptEvents
+  Conversations --> PromptEvents[prompt_events]
+  PromptEvents --> Embedding["embedding (pgvector)"]
 ```
 
-
-
-## Arquitectura objetivo
+## Arquitectura runtime
 
 ```mermaid
 flowchart LR
-  IDEClient[IDEClient] --> MCPServer[MCPServer]
-  MCPServer --> QueryPlanner[QueryPlanner]
-  QueryPlanner --> MetaFilter[MetaFilterPostgres]
-  QueryPlanner --> VectorSearch[VectorSearchQdrant]
-  MetaFilter --> ContextBuilder[ContextBuilder]
-  VectorSearch --> ContextBuilder
-  ContextBuilder --> PromptComposer[PromptComposer]
-  PromptComposer --> LLMProvider[LLMProvider]
-  LLMProvider --> ResponseHandler[ResponseHandler]
-  ResponseHandler --> PostgresStore[PostgresStore]
-  ResponseHandler --> QdrantStore[QdrantStore]
+  IDEClient[IDE MCP Client] -->|STDIO| MCPServer[apps/mcp-server]
+  Dashboard[apps/dashboard] -->|HTTP| API[apps/api]
+  MCPServer --> Core[packages/core]
+  API --> Core
+  API --> Shared[packages/shared]
+  Core --> Postgres[(PostgreSQL pgvector)]
+  Core --> Ollama[(Ollama embeddings + chat)]
 ```
 
+## Checklist técnico
 
+### Fase 1 — MVP MCP (completada)
 
-## Fase 1: MVP SDD (portable y costo mínimo)
+- [x] PostgreSQL + pgvector + schema (`projects`, `conversations`, `prompt_events`, HNSW).
+- [x] `.env` raíz con `POSTGRES_*`, `OLLAMA_*`, `EMBEDDING_*`, `TOPK_*`, `SUMMARY_*`.
+- [x] MCP server NestJS STDIO con 4 tools.
+- [x] Resúmenes LLM rolling + embeddings solo en `is_summary=true`.
+- [x] Retrieval adaptativo + compresión con presupuesto de tokens.
+- [x] Smoke tests: `db:smoke`, `test:e2e` (smoke-summary); KPI reducción contexto ≥ 30%.
 
-## Checklist técnico de ejecución (Fase 1)
+### Fase 1.5 — Monorepo + API (completada)
 
-- [ ] **Infra local**
-  - [x] Crear `docker-compose.yml` con PostgreSQL y Qdrant.
-  - [x] Crear `.env` con variables mínimas (`POSTGRES_*`, `QDRANT_URL`, `QDRANT_COLLECTION_NAME`, `EMBEDDING_VECTOR_SIZE`, `TOPK_DEFAULT`).
-  - [x] Verificar conectividad desde el servidor MCP a ambos servicios (`pnpm run db:smoke`).
+- [x] `pnpm-workspace.yaml` + root `package.json`.
+- [x] `packages/core` con servicios extraídos del mcp-server.
+- [x] `packages/shared` con DTOs REST por archivo.
+- [x] `apps/api` HTTP con módulos por feature y health check con ping DB.
+- [x] TypeScript project references + builds composite.
+- [x] Prettier global en raíz.
 
-- [ ] **Modelo de datos mínimo (PostgreSQL)**
-  - [x] Crear tabla `projects` (`id`, `name`, `created_at`).
-  - [x] Crear tabla `conversations` (`id`, `project_id`, `provider`, `user_name`, `created_at`, `updated_at`).
-  - [x] Crear tabla `prompt_events` (`id`, `conversation_id`, `role`, `content`, `is_summary`, `created_at`).
-  - [ ] Definir FKs e índices base:
-    - [x] `conversations.project_id -> projects.id`
-    - [x] `prompt_events.conversation_id -> conversations.id`
-    - [x] índice `(conversation_id, created_at ASC)`
-    - [x] índice `(conversation_id, is_summary)`
+### Pendiente
 
-- [ ] **MCP server base (NestJS)**
-  - [x] Inicializar servidor MCP (tool-first).
-  - [ ] Registrar tools:
-    - [x] `save_interaction_memory`
-    - [x] `search_project_context`
-  - [x] Definir DTOs mínimos de entrada/salida para ambas tools.
-  - [x] Tipos por módulo (`common/types`, `{module}/types`, `mcp/schemas` + `mcp/types`). Ver [types-por-modulo.md](types-por-modulo.md).
-
-- [ ] **Qdrant ajustado (colección única)**
-  - [x] Crear colección `conversation_summaries` (Cosine).
-  - [x] Configurar `vector_size` desde `EMBEDDING_VECTOR_SIZE` (defaults inline vía `process.env`).
-  - [ ] Definir payload obligatorio:
-    - [x] `project_id`, `conversation_id`, `provider`, `user_name`, `created_at`, `is_summary=true`.
-
-- [x] **Regla de resumen e indexación (LLM rolling — supersede determinista)**
-  - [x] Guardar turnos normales con `is_summary=false`.
-  - [x] Generar resumen LLM Ollama rolling cada 8 turnos o >4k tokens estimados.
-  - [x] Indexar en Qdrant solo eventos con `is_summary=true`.
-  - [x] Usar `prompt_events.id` como `id` del punto en Qdrant.
-  - [x] `summary_kind=rolling` para auto-generados; `summary_kind=milestone` para explícitos.
-
-- [x] **Flujo de recuperación de contexto**
-  - [x] En `search_project_context`, filtrar siempre por `project_id`.
-  - [x] Aplicar filtro opcional por `conversation_id` cuando la consulta sea local.
-  - [x] Ejecutar búsqueda con `topK=3` (subir a `5` si confianza baja).
-  - [x] Devolver únicamente snippets resumidos (nunca turnos crudos completos).
-
-- [x] **Sincronización y tolerancia a fallos**
-  - [x] Si falla Qdrant al indexar, no romper la conversación.
-  - [x] Registrar error y encolar reintento en background.
-  - [x] Al eliminar conversación/proyecto, borrar también puntos asociados en Qdrant por filtro.
-
-- [x] **Validación de cierre Fase 1**
-  - [x] Probar ciclo completo: IDE -> `save_interaction_memory` -> resumen -> indexación -> `search_project_context`.
-  - [x] Verificar que solo `is_summary=true` entra en Qdrant.
-  - [x] Verificar reducción de contexto inyectado >= 30% frente a baseline sin retrieval selectivo.
-
-### 1) Infraestructura local base
-
-- Crear `docker-compose` con PostgreSQL y Qdrant.
-- Definir variables en `.env` para puertos, credenciales y límites de retrieval.
-- Entregables:
-  - [docker-compose.yml](docker-compose.yml)
-  - [.env](.env)
-
-### 2) Esquema de datos mínimo para memoria útil y barata
-
-- Diseñar tablas mínimas en PostgreSQL para no sobredimensionar costo:
-  - `projects`, `conversations`, `prompt_events`.
-- Posponer métricas/caché avanzadas para una iteración 1.1.
-- Entregables:
-  - [apps/mcp-server/src/db/schema.sql](apps/mcp-server/src/db/schema.sql) o equivalente ORM
-  - [apps/mcp-server/src/db/migrations/](apps/mcp-server/src/db/migrations/)
-
-### 3) Servidor MCP en NestJS (tool-first)
-
-- Levantar servidor NestJS con transporte MCP.
-- Variables de entorno con defaults inline (`process.env`); sin módulo de validación dedicado en Fase 1.
-- Implementar tools iniciales:
-  - `search_project_context`
-  - `save_interaction_memory`
-- Mantener contratos simples y agnósticos de IDE.
-- Entregables:
-  - [apps/mcp-server/src/main.ts](apps/mcp-server/src/main.ts)
-  - [apps/mcp-server/src/mcp/mcp.module.ts](apps/mcp-server/src/mcp/mcp.module.ts)
-  - [apps/mcp-server/src/mcp/tools.registry.ts](apps/mcp-server/src/mcp/tools.registry.ts)
-
-### 4) Pipeline de enriquecimiento de prompt con control de tokens
-
-- Flujo:
-  1. Normalizar consulta y extraer señales (proyecto, intención, stack).
-  2. Filtro por metadatos en PostgreSQL (reducir candidatos antes de vector search).
-  3. Búsqueda vectorial en Qdrant con `topK` bajo y umbral de similitud.
-  4. Dedupe de chunks por hash.
-  5. Compresión/síntesis de contexto con presupuesto estricto de tokens.
-  6. Composición de prompt final (contexto mínimo útil).
-  7. Persistencia post-respuesta (memoria y métricas).
-- Entregables:
-  - [apps/mcp-server/src/retrieval/context-retrieval.service.ts](apps/mcp-server/src/retrieval/context-retrieval.service.ts)
-  - [apps/mcp-server/src/enrichment/context-compression.service.ts](apps/mcp-server/src/enrichment/context-compression.service.ts)
-  - [apps/mcp-server/src/enrichment/prompt-enrichment.service.ts](apps/mcp-server/src/enrichment/prompt-enrichment.service.ts)
-  - [apps/mcp-server/src/enrichment/interaction-persistence.service.ts](apps/mcp-server/src/enrichment/interaction-persistence.service.ts)
-  - [apps/mcp-server/src/enrichment/embedding.service.ts](apps/mcp-server/src/enrichment/embedding.service.ts)
-
-### 5) Reglas explícitas de ahorro de tokens (obligatorias)
-
-- Presupuesto por llamada (hard limit): `maxContextTokens`.
-- Prioridad de fuentes: decisiones > código reciente > docs largas.
-- `topK` adaptativo (mínimo por defecto, crecer sólo si baja confianza).
-- Evitar persistir ruido: guardar turnos y resúmenes; no crear tablas adicionales en Fase 1.
-- Entregable:
-  - [apps/mcp-server/src/config/token-budget.config.ts](apps/mcp-server/src/config/token-budget.config.ts)
-
-### 6) Validación de Fase 1 (Definition of Done)
-
-- Pruebas E2E del ciclo: IDE -> MCP tool -> retrieval -> prompt enriquecido -> persistencia.
-- KPI objetivo inicial:
-  - reducción de tamaño de contexto inyectado >= 30% vs baseline sin retrieval selectivo.
-  - p95 latencia de retrieval+composición <= 900ms local.
-- Entregables:
-  - [apps/mcp-server/test/e2e/prompt-flow.e2e-spec.ts](apps/mcp-server/test/e2e/prompt-flow.e2e-spec.ts)
-  - [docs/mvp-kpis.md](docs/mvp-kpis.md)
+- [ ] `docker-compose.yml` en repo (Postgres + pgvector + Ollama) — hoy infra manual/local.
+- [ ] `apps/dashboard` Angular consumiendo `@contextforge/shared`.
+- [ ] Fase 2: orquestación subagentes (ver abajo).
 
 ## Fase 2: subagentes por tarea (reparto de contexto)
 
 ### 1) Orquestación Supervisor-Workers
 
-- Introducir grafo de tareas con Supervisor.
-- Workers especializados (ejemplo): `securityWorker`, `performanceWorker`, `testingWorker`, `docsWorker`.
-- Cada worker recibe contexto mínimo específico de su dominio.
-- Entregables:
-  - [apps/mcp-server/src/orchestration/supervisor.graph.ts](apps/mcp-server/src/orchestration/supervisor.graph.ts)
-  - [apps/mcp-server/src/orchestration/workers/](apps/mcp-server/src/orchestration/workers/)
+- Grafo de tareas con Supervisor; workers por dominio (`security`, `performance`, `testing`, `docs`).
+- Ubicación prevista: `packages/core/src/orchestration/` o app dedicada según evolucione el monorepo.
 
 ### 2) Síntesis final compacta
 
-- Consolidar salidas de workers en un resumen único de alta densidad informativa.
-- Prohibir volcado completo de salidas crudas al hilo principal.
-- Entregable:
-  - [apps/mcp-server/src/orchestration/result-consolidator.service.ts](apps/mcp-server/src/orchestration/result-consolidator.service.ts)
+- Consolidar salidas de workers en resumen de alta densidad; prohibir volcado crudo al hilo principal.
 
 ### 3) Métricas comparativas Fase 1 vs Fase 2
 
-- Medir impacto real en costo/tokens y calidad de respuesta.
-- Entregable:
-  - [docs/phase2-evaluation.md](docs/phase2-evaluation.md)
+- Medir tokens, costo y calidad; documentar en `docs/phase2-evaluation.md` (pendiente).
 
 ## Estrategia de migración futura a cloud
 
-- Mantener capa de acceso a datos con interfaces para cambiar de Postgres local a Postgres cloud sin tocar lógica MCP.
-- Preparar script de export/import y versionado de esquema.
+- Capa de acceso en `packages/core` desacoplada del transporte (MCP vs HTTP).
+- Postgres cloud compatible; mismo schema + pgvector.
+- Script export/import y migraciones versionadas (pendiente).
 
 ## Riesgos y mitigaciones
 
-- Riesgo: complejidad temprana de subagentes. Mitigación: bloquear Fase 2 hasta cumplir KPIs Fase 1.
-- Riesgo: contexto excesivo por retrieval. Mitigación: token budget estricto + topK adaptativo + compresión.
-- Riesgo: lock-in de proveedor LLM. Mitigación: adapter por proveedor y métricas homogéneas.
+- **Subagentes demasiado pronto:** bloquear Fase 2 hasta KPIs Fase 1 estables.
+- **Contexto excesivo:** token budget + topK adaptativo + compresión.
+- **Lock-in LLM:** `EmbeddingService` con adapter Ollama/OpenAI.
+- **Drift documentación ↔ código:** mantener este archivo alineado tras cambios estructurales.
