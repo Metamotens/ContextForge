@@ -1,18 +1,14 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "./dist",
     "rootDir": "./src",
-    "baseUrl": "./src",
+    "outDir": "./dist",
     "types": ["node"],
+    "baseUrl": "./src",
     "paths": {
       "@api/*": ["*"]
     }
   },
-  "references": [
-    { "path": "../../packages/core" },
-    { "path": "../../packages/shared" }
-  ],
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "references": [{ "path": "../../packages/core" }, { "path": "../../packages/shared" }],
+  "include": ["src/**/*.ts"]
 }

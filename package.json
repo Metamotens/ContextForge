@@ -4,8 +4,12 @@
   "private": true,
   "packageManager": "pnpm@10.16.1",
   "scripts": {
-    "build": "pnpm --filter @contextforge/core build && pnpm --filter @contextforge/shared build && pnpm --filter @contextforge/mcp-server build && pnpm --filter @contextforge/api build",
+    "build": "tsc -b",
     "build:core": "pnpm --filter @contextforge/core build",
+    "build:shared": "pnpm --filter @contextforge/shared build",
+    "build:api": "pnpm --filter @contextforge/api build",
+    "build:mcp": "pnpm --filter @contextforge/mcp-server build",
+    "clean": "tsc -b --clean",
     "dev:api": "pnpm --filter @contextforge/api start:dev",
     "dev:mcp": "pnpm --filter @contextforge/mcp-server start:dev",
     "db:init": "pnpm --filter @contextforge/core db:init",

@@ -1,17 +1,16 @@
 {
   "compilerOptions": {
+    "target": "ES2022",
     "module": "NodeNext",
-    "declaration": false,
-    "removeComments": true,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "allowSyntheticDefaultImports": true,
-    "target": "ES2021",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "skipLibCheck": true,
     "sourceMap": true,
     "incremental": true,
-    "strict": true,
-    "moduleResolution": "nodenext",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "allowSyntheticDefaultImports": true,
+    "removeComments": true
   }
 }
