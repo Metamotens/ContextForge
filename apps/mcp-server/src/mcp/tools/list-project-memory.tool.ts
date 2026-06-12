@@ -45,6 +45,8 @@ export class ListProjectMemoryTool {
     ).map((row) => ({
       id: row.id,
       provider: row.provider,
+      model: row.model,
+      title: row.title,
       userName: row.userName,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
@@ -52,7 +54,9 @@ export class ListProjectMemoryTool {
       summaryCount: row.summaryCount,
     }));
 
-    const events: ListProjectMemoryEvent[] = (await this.postgres.listEventsByProject(projectId, eventLimit)).map(
+    const events: ListProjectMemoryEvent[] = (
+      await this.postgres.listEventsByProject({ projectId, limit: eventLimit })
+    ).map(
       (row) => ({
         id: row.id,
         conversationId: row.conversationId,

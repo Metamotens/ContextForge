@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 
 import { deterministicUuid } from '../common/utils/identity.util';
+import { conversationTitleFromContent } from '../common/utils/text.util';
+import { SummaryConfig } from '../config/summary.config';
 import { EmbeddingService } from './embedding.service';
 import type {
   PersistEventInput,
@@ -28,11 +30,17 @@ export class InteractionPersistenceService {
     const isSummaryFlag = input.isSummary === true;
 
     await this.postgres.upsertProject({ id: projectId, name: input.projectName });
+    const conversationTitle =
+      input.title ??
+      (input.role === 'user' ? conversationTitleFromContent(input.content) || null : null);
+
     await this.postgres.upsertConversation({
       id: conversationUuid,
       projectId,
       provider: input.provider,
       userName: input.userName,
+      model: input.model ?? SummaryConfig.chatModel,
+      title: conversationTitle,
     });
     await this.postgres.insertPromptEvent({
       id: eventId,

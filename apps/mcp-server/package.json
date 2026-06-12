@@ -13,7 +13,7 @@
     "build": "tsc -p tsconfig.json && tsc-alias -p tsconfig.json",
     "start:dev": "pnpm dev:ts src/main.ts",
     "dev:ts": "cross-env TS_NODE_PROJECT=tsconfig.dev.json node --env-file=../../.env -r tsconfig-paths/register -r ts-node/register",
-    "db:init": "pnpm dev:ts src/scripts/db-init.ts",
+    "db:init": "pnpm --filter @contextforge/core db:init",
     "db:smoke": "pnpm dev:ts src/scripts/smoke-test.ts",
     "test:e2e": "pnpm dev:ts src/scripts/smoke-summary.ts"
   },

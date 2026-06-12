@@ -17,13 +17,11 @@ function log(message: string): void {
 async function resetSmokeData(stepResults: StepResult[]): Promise<void> {
   try {
     const projectUuid = deterministicUuid('project', PROJECT_NAME);
-    const deleted = await execPsql(`DELETE FROM prompt_events WHERE conversation_id IN (SELECT id FROM conversations WHERE project_id = '${projectUuid}')`);
-    const deletedConv = await execPsql(`DELETE FROM conversations WHERE project_id = '${projectUuid}'`);
     const deletedProj = await execPsql(`DELETE FROM projects WHERE id = '${projectUuid}'`);
     stepResults.push({
       name: 'reset:postgres',
       ok: true,
-      detail: `cleaned events=${deleted}, conv=${deletedConv}, proj=${deletedProj}`,
+      detail: `deleted project rows=${deletedProj} (CASCADE clears conversations/events)`,
     });
   } catch (e) {
     stepResults.push({
@@ -49,6 +47,25 @@ async function main(): Promise<number> {
   log(`project=${PROJECT_NAME} conversation=${CONVERSATION_ID}`);
 
   const stepResults: StepResult[] = [];
+
+  try {
+    await execPsql('SELECT 1');
+  } catch (e) {
+    stepResults.push({
+      name: 'postgres:connect',
+      ok: false,
+      detail: e instanceof Error ? e.message : String(e),
+    });
+    log('--- results ---');
+    for (const step of stepResults) {
+      const mark = step.ok ? 'OK ' : 'FAIL';
+      process.stdout.write(`  [${mark}] ${step.name}: ${step.detail}\n`);
+    }
+    log('smoke test FAILED — start PostgreSQL and run pnpm db:init');
+    await closePsqlPool();
+    return 1;
+  }
+
   await resetSmokeData(stepResults);
 
   const app = await NestFactory.createApplicationContext(AppModule, {
@@ -97,6 +114,21 @@ async function main(): Promise<number> {
       name: 'postgres:events',
       ok: totalEvents >= totalTurns * 2,
       detail: `total=${totalEvents} (expected >=${totalTurns * 2}) summary=${summaryEvents}`,
+    });
+
+    const conversationMeta = await execPsql(
+      `SELECT c.model || '|' || COALESCE(c.title, '') FROM conversations c JOIN projects p ON p.id = c.project_id WHERE p.name = '${PROJECT_NAME}' LIMIT 1`,
+    );
+    const [conversationModel, conversationTitle] = conversationMeta.split('|');
+    stepResults.push({
+      name: 'conversation:model',
+      ok: Boolean(conversationModel) && conversationModel !== 'unknown',
+      detail: `model=${conversationModel || '(empty)'} (expected configured chat model, not 'unknown')`,
+    });
+    stepResults.push({
+      name: 'conversation:title',
+      ok: Boolean(conversationTitle?.trim()),
+      detail: `title=${JSON.stringify((conversationTitle ?? '').slice(0, 80))}`,
     });
 
     // --- pgvector embedding count ---

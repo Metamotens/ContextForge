@@ -23,6 +23,15 @@ todos:
   - id: monorepo-restructure
     content: pnpm workspace, packages/core, packages/shared, apps/api REST
     status: completed
+  - id: api-dashboard-gaps
+    content: API observabilidad ampliada (summaries, paginación eventos, DELETE, createdAt)
+    status: completed
+  - id: schema-ux-improves
+    content: Schema UX (projects.name UNIQUE, conversations.model/title) + DTOs/MCP
+    status: completed
+  - id: knowledge-entries-spec
+    content: Especificar pipeline knowledge_entries antes de implementar tabla
+    status: completed
   - id: dashboard-angular
     content: App Angular en apps/dashboard consumiendo API + shared DTOs
     status: pending
@@ -50,31 +59,41 @@ isProject: false
 
 - **Fase 1 (MVP):** capturar contexto, recuperar memoria del proyecto, enriquecer prompt, persistir aprendizaje vía MCP.
 - **Fase 1.5 (hecho):** monorepo + API REST de observabilidad.
+- **Fase 1.55 (hecho):** gaps API para dashboard + mejoras de schema UX ([improves.md](improves.md)); spec de `knowledge_entries` ([knowledge-entries.md](knowledge-entries.md)) sin implementar tabla aún.
 - **Fase 1.6 (pendiente):** dashboard Angular en `apps/dashboard`.
 - **Fase 2:** subagentes por tarea para repartir contexto y devolver síntesis compacta.
+- **Fase 2+ (diseño):** capa `knowledge_entries` (memoria curada separada del historial).
 
 ## Estructura del proyecto (actual)
 
 ```text
 ContextForge/
 ├── pnpm-workspace.yaml       # apps/* + packages/*
-├── package.json              # @contextforge/root — scripts build/dev/format
+├── package.json              # @contextforge/root — build, dev, db:init/smoke/e2e
 ├── tsconfig.base.json        # opciones TS compartidas
 ├── .prettierrc               # Prettier global
 ├── .prettierignore
 ├── .env                      # variables compartidas (raíz)
-├── AGENTS.md                 # índice de agent skills
+├── AGENTS.md                 # índice para agentes (estructura, verificación, skills)
 ├── plans/
-│   ├── specifications.md
+│   ├── specifications.md     # este archivo
+│   ├── improves.md           # mejoras de schema/UX (model, title, knowledge_entries)
+│   ├── improvements2.md      # layout monorepo (schema en core; knowledge/dashboard diferidos)
+│   ├── knowledge-entries.md  # spec ingestión/búsqueda (implementación pendiente)
 │   └── resumenes-llm-ollama.md
 ├── skills/                   # skills del proyecto (nestjs, pnpm, antfu, postgresql…)
 │
 ├── packages/
-│   ├── core/                 # @contextforge/core — lógica compartida
+│   ├── core/                 # @contextforge/core — lógica compartida + schema DB
+│   │   ├── scripts/
+│   │   │   └── db-init.ts    # pnpm db:init
 │   │   └── src/
 │   │       ├── common/       # tipos y utils compartidos
 │   │       ├── config/       # token-budget, summary
-│   │       ├── persistence/  # PostgresService, PgVectorService + módulos
+│   │       ├── persistence/
+│   │       │   ├── database/schema.sql
+│   │       │   ├── postgres/ # PostgresService, PostgresModule
+│   │       │   └── pgvector/ # PgVectorService, PgVectorModule
 │   │       ├── enrichment/   # embedding, summary LLM, persistencia, retrieval
 │   │       ├── retrieval/    # ContextRetrievalService, SummaryService
 │   │       └── index.ts      # barrel público del paquete
@@ -86,6 +105,7 @@ ContextForge/
 │           ├── prompt-event.dto.ts
 │           ├── stats.dto.ts
 │           ├── search.dto.ts
+│           ├── summary.dto.ts
 │           ├── health.dto.ts
 │           └── index.ts        # re-exports (sin definir tipos inline)
 │
@@ -94,13 +114,12 @@ ContextForge/
     │   └── src/
     │       ├── main.ts       # createApplicationContext, transport STDIO
     │       ├── app.module.ts
-    │       ├── db/schema.sql
     │       ├── mcp/
     │       │   ├── mcp.module.ts
     │       │   ├── schemas/  # Zod (validación MCP)
     │       │   ├── types/    # tipos inferidos de schemas
     │       │   └── tools/    # 4 MCP tools
-    │       └── scripts/      # db-init, smoke-test, smoke-summary
+    │       └── scripts/      # smoke-test, smoke-summary, smoke-helpers
     │
     ├── api/                  # @contextforge/api — NestJS HTTP REST
     │   └── src/
@@ -125,22 +144,45 @@ graph TD
   ollama[("Ollama")] --> core
 ```
 
-### Scripts raíz (`package.json`)
+### Scripts del workspace (`package.json`)
+
+**Raíz (`@contextforge/root`):**
 
 | Script | Descripción |
 |--------|-------------|
 | `pnpm build` | Build core → shared → mcp-server → api |
+| `pnpm build:core` | Solo `@contextforge/core` |
 | `pnpm dev:mcp` | MCP server en dev (ts-node) |
 | `pnpm dev:api` | API HTTP en dev (puerto `API_PORT`, default 3000) |
+| `pnpm db:init` | Schema idempotente vía `@contextforge/core` |
+| `pnpm db:smoke` | Conectividad + validación schema/pgvector |
+| `pnpm test:e2e` | Pipeline completo (requiere Ollama) |
 | `pnpm format` | Prettier en todo el monorepo |
 
-Scripts por app (desde cada `apps/*` o vía filter):
+Orden tras cambios de schema: **`db:init` → `db:smoke` → `test:e2e`**.
 
-| App | Scripts relevantes |
-|-----|-------------------|
-| `mcp-server` | `db:init`, `db:smoke`, `test:e2e` (smoke-summary) |
-| `core` | `build` (tsc composite → `dist/`) |
-| `shared` | `build` (tsc composite → `dist/`) |
+**Por paquete:**
+
+| Paquete | Scripts |
+|---------|---------|
+| `@contextforge/core` | `build`, `db:init` |
+| `@contextforge/shared` | `build` |
+| `@contextforge/mcp-server` | `build`, `start`, `start:dev`, `db:init` (delega a core), `db:smoke`, `test:e2e` |
+| `@contextforge/api` | `build`, `start`, `start:dev` |
+
+Requisito infra local: PostgreSQL 16+ con pgvector en `POSTGRES_*`; sin servicio activo, `db:init`/`db:smoke` fallan con `ECONNREFUSED`.
+
+### Smoke tests y DB init
+
+| Script | Comando | Ubicación | Qué valida |
+|--------|---------|-----------|------------|
+| `db-init.ts` | `pnpm db:init` | `packages/core/scripts/` | Aplica `schema.sql`; verifica extensiones, 3 tablas, HNSW, `projects_name_unique`, `conversations.model/title` |
+| `smoke-test.ts` | `pnpm db:smoke` | `apps/mcp-server/src/scripts/` | `postgres:connect`, tablas, `schema:projects-name-unique`, `schema:conversations-model/title`, `pgvector:extension`, `embedding`, `hnsw-index` |
+| `smoke-summary.ts` | `pnpm test:e2e` | `apps/mcp-server/src/scripts/` | Reset CASCADE, persist 9 turnos, resumen LLM, embeddings, búsqueda, `conversation:model/title`, KPI reducción ≥ 30% |
+
+Pasos de `db:smoke` (si Postgres disponible): `postgres:connect` → `postgres:tables` → schema → pgvector (7 checks en total).
+
+Requisitos: PostgreSQL 16+ con pgvector (`POSTGRES_*` en `.env`); Ollama accesible para `test:e2e` (`OLLAMA_*`, embeddings + chat).
 
 ## Organización de tipos y contratos
 
@@ -158,7 +200,7 @@ Reglas:
 
 - **`@contextforge/core`**: servicios NestJS, módulos globales (`PostgresModule`, `PgVectorModule`, `EnrichmentModule`), utilidades. Export vía `packages/core/src/index.ts`.
 - **`@contextforge/shared`**: solo tipos/DTOs del contrato REST; un archivo por entidad; `index.ts` solo re-exporta.
-- **`apps/mcp-server`**: borde MCP (tools, schemas, scripts). Importa `@contextforge/core`.
+- **`apps/mcp-server`**: borde MCP (tools, schemas, scripts). `McpServerModule` importa `EnrichmentModule` para DI de tools.
 - **`apps/api`**: controllers + services por feature module. Importa `@contextforge/core` y `@contextforge/shared`.
 - Servicios `@Injectable` en core no exportan contratos desde archivos de servicio; tipos viven en `{module}/types/` o en `shared`.
 
@@ -190,7 +232,7 @@ Reglas:
 | Tool | Rol |
 |------|-----|
 | `search_project_context` | Búsqueda semántica + `contextBlock` con presupuesto de tokens |
-| `save_interaction_memory` | Persistir turno; dispara resumen + embedding si umbral |
+| `save_interaction_memory` | Persistir turno (`model?`, `title?` opcionales); dispara resumen + embedding si umbral |
 | `list_project_memory` | Inspección read-only de memoria del proyecto |
 | `delete_project_memory` | Borrado completo del proyecto (CASCADE) |
 
@@ -204,10 +246,26 @@ Reglas:
 | `GET` | `/projects/:id` | Detalle de proyecto |
 | `GET` | `/projects/:id/stats` | Contadores del proyecto |
 | `GET` | `/projects/:id/conversations` | Conversaciones del proyecto |
-| `GET` | `/projects/:id/events?limit=` | Eventos recientes |
+| `GET` | `/projects/:id/events?limit=&offset=&conversationId=` | Eventos recientes (paginados, filtro opcional por conversación) |
+| `GET` | `/projects/:id/summaries?limit=` | Resúmenes indexados en pgvector (paridad MCP `vectorPoints`) |
 | `GET` | `/projects/:id/search?q=` | Búsqueda semántica (misma lógica que MCP) |
+| `DELETE` | `/projects/:id` | Borrado completo del proyecto (CASCADE) |
 
 Organización NestJS: módulos por feature (`HealthModule`, `StatsModule`, `ProjectsModule`); módulos globales de core importados una vez en `AppModule`.
+
+### DTOs REST (`@contextforge/shared`)
+
+| DTO | Campos principales |
+|-----|-------------------|
+| `ProjectDto` | `id`, `name`, `createdAt` |
+| `ConversationDto` | `id`, `provider`, `model`, `title`, `userName`, `createdAt`, `updatedAt`, `eventCount`, `summaryCount` |
+| `PromptEventDto` | `id`, `conversationId`, `role`, `content`, `isSummary`, `createdAt` |
+| `IndexedSummaryDto` | `id`, `conversationId`, `provider`, `userName`, `content`, `createdAt` |
+| `ProjectStatsDto` / `GlobalStatsDto` | Contadores de conversaciones, eventos, resúmenes |
+| `SearchResponseDto` | `results`, `contextBlock`, `snippetCount`, `tokensUsed`, `truncated` |
+| `HealthDto` | `status`, `timestamp` |
+
+Límites API: eventos `limit` 1–200 (default 50), `offset` ≥ 0; resúmenes `limit` 1–500 (default 100).
 
 ### Embeddings (proveedor configurable)
 
@@ -217,7 +275,7 @@ Organización NestJS: módulos por feature (`HealthModule`, `StatsModule`, `Proj
 
 ## Modelos de tablas PostgreSQL (Fase 1)
 
-Schema aplicable: [apps/mcp-server/src/db/schema.sql](../apps/mcp-server/src/db/schema.sql) (`pnpm db:init` desde mcp-server).
+Schema aplicable: [packages/core/src/persistence/database/schema.sql](../packages/core/src/persistence/database/schema.sql) (`pnpm db:init` desde raíz o `@contextforge/core`).
 
 ### Principios de diseño
 
@@ -228,13 +286,15 @@ Schema aplicable: [apps/mcp-server/src/db/schema.sql](../apps/mcp-server/src/db/
 ### 1) `projects`
 
 - **Objetivo:** identificar el proyecto.
-- **Campos:** `id` UUID PK, `name` VARCHAR(180), `created_at` TIMESTAMPTZ.
+- **Campos:** `id` UUID PK, `name` VARCHAR(180) UNIQUE, `created_at` TIMESTAMPTZ.
 
 ### 2) `conversations`
 
 - **Objetivo:** agrupar eventos por sesión de trabajo.
-- **Campos:** `id`, `project_id` FK, `provider`, `user_name`, `created_at`, `updated_at`.
+- **Campos:** `id`, `project_id` FK, `provider`, `model`, `title` (nullable), `user_name`, `created_at`, `updated_at`.
 - **Índices:** `(project_id, created_at DESC)`.
+- **`model`:** NOT NULL, default `'unknown'` en DB; al persistir vía MCP usa `OLLAMA_CHAT_MODEL` si el cliente no envía `model`.
+- **`title`:** nullable; el cliente MCP puede enviar `title`; si no, se deriva del primer turno `user` (`conversationTitleFromContent` en core).
 
 ### 3) `prompt_events`
 
@@ -288,6 +348,10 @@ flowchart LR
   PromptEvents --> Embedding["embedding (pgvector)"]
 ```
 
+### Evolución planificada: `knowledge_entries`
+
+No implementado aún. Spec en [knowledge-entries.md](knowledge-entries.md): tabla separada para conocimiento consolidado (facts/decisiones), con pipeline de extracción desde resúmenes milestone y búsqueda complementaria o sustitutiva de `prompt_events.embedding`. Ver también [improves.md](improves.md).
+
 ## Arquitectura runtime
 
 ```mermaid
@@ -321,10 +385,28 @@ flowchart LR
 - [x] TypeScript project references + builds composite.
 - [x] Prettier global en raíz.
 
+### Fase 1.55 — API dashboard + schema UX (completada)
+
+- [x] `ProjectDto.createdAt`; `ConversationDto.model` + `title`; `IndexedSummaryDto`.
+- [x] API: `GET /projects/:id/summaries`, paginación/filtro en `/events`, `DELETE /projects/:id`.
+- [x] Schema: `projects.name` UNIQUE; `conversations.model` + `title`.
+- [x] MCP `save_interaction_memory`: campos opcionales `model`, `title`; auto-título desde primer turno `user`.
+- [x] `McpServerModule` importa `EnrichmentModule` (DI correcta en smokes y runtime).
+- [x] Smokes ampliados: schema nuevo, HNSW, `model`/`title`, errores de conexión claros.
+- [x] Spec `knowledge_entries` documentada; tabla **no** creada.
+
+### Fase 1.56 — Layout monorepo ([improvements2.md](improvements2.md), completada)
+
+- [x] `schema.sql` en `packages/core/src/persistence/database/`.
+- [x] `db:init` en `@contextforge/core` (`packages/core/scripts/db-init.ts`).
+- [x] Sin módulo `knowledge/` ni `KnowledgeEntryDto` hasta pipeline Fase 2+.
+- [x] Sin scaffold `apps/dashboard/` hasta Fase 1.6 Angular.
+
 ### Pendiente
 
 - [ ] `docker-compose.yml` en repo (Postgres + pgvector + Ollama) — hoy infra manual/local.
 - [ ] `apps/dashboard` Angular consumiendo `@contextforge/shared`.
+- [ ] Implementar `knowledge_entries` según [knowledge-entries.md](knowledge-entries.md).
 - [ ] Fase 2: orquestación subagentes (ver abajo).
 
 ## Fase 2: subagentes por tarea (reparto de contexto)

@@ -7,6 +7,8 @@ export type ListProjectMemoryInput = z.infer<typeof ListProjectMemoryInputSchema
 export interface ListProjectMemoryConversation {
   id: string;
   provider: string;
+  model: string;
+  title: string | null;
   userName: string;
   createdAt: string;
   updatedAt: string;

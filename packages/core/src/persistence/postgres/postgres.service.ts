@@ -6,6 +6,7 @@ import type {
   CountersRow,
   InsertPromptEventInput,
   LastSummaryResult,
+  ListEventsByProjectOptions,
   PromptEventRow,
   UpsertConversationInput,
   UpsertProjectInput,
@@ -57,19 +58,25 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
     return result.rows[0]?.id ?? null;
   }
 
-  async findProjectById(id: string): Promise<{ id: string; name: string } | null> {
-    const result = await this.pool.query<{ id: string; name: string }>(
-      'SELECT id, name FROM projects WHERE id = $1 LIMIT 1',
+  async findProjectById(id: string): Promise<{ id: string; name: string; createdAt: Date } | null> {
+    const result = await this.pool.query<{ id: string; name: string; created_at: Date }>(
+      'SELECT id, name, created_at FROM projects WHERE id = $1 LIMIT 1',
       [id],
     );
-    return result.rows[0] ?? null;
+    const row = result.rows[0];
+    if (!row) return null;
+    return { id: row.id, name: row.name, createdAt: row.created_at };
   }
 
-  async listProjects(): Promise<Array<{ id: string; name: string }>> {
-    const result = await this.pool.query<{ id: string; name: string }>(
-      'SELECT id, name FROM projects ORDER BY name ASC',
+  async listProjects(): Promise<Array<{ id: string; name: string; createdAt: Date }>> {
+    const result = await this.pool.query<{ id: string; name: string; created_at: Date }>(
+      'SELECT id, name, created_at FROM projects ORDER BY name ASC',
     );
-    return result.rows;
+    return result.rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      createdAt: row.created_at,
+    }));
   }
 
   async getGlobalStats(): Promise<{
@@ -104,11 +111,13 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
 
   async upsertConversation(input: UpsertConversationInput): Promise<void> {
     await this.pool.query(
-      `INSERT INTO conversations (id, project_id, provider, user_name, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, now(), now())
+      `INSERT INTO conversations (id, project_id, provider, user_name, model, title, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, now(), now())
        ON CONFLICT (id) DO UPDATE
-         SET updated_at = now()`,
-      [input.id, input.projectId, input.provider, input.userName],
+         SET updated_at = now(),
+             model = EXCLUDED.model,
+             title = COALESCE(conversations.title, EXCLUDED.title)`,
+      [input.id, input.projectId, input.provider, input.userName, input.model, input.title ?? null],
     );
   }
 
@@ -194,25 +203,7 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
   }
 
   async deleteProject(projectId: string): Promise<void> {
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query(
-        `DELETE FROM prompt_events
-          WHERE conversation_id IN (
-            SELECT id FROM conversations WHERE project_id = $1
-          )`,
-        [projectId],
-      );
-      await client.query(`DELETE FROM conversations WHERE project_id = $1`, [projectId]);
-      await client.query(`DELETE FROM projects WHERE id = $1`, [projectId]);
-      await client.query('COMMIT');
-    } catch (error) {
-      await client.query('ROLLBACK').catch(() => undefined);
-      throw error;
-    } finally {
-      client.release();
-    }
+    await this.pool.query('DELETE FROM projects WHERE id = $1', [projectId]);
   }
 
   async listConversationsByProject(
@@ -221,6 +212,8 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
     Array<{
       id: string;
       provider: string;
+      model: string;
+      title: string | null;
       userName: string;
       createdAt: Date;
       updatedAt: Date;
@@ -231,6 +224,8 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
     const result = await this.pool.query<{
       id: string;
       provider: string;
+      model: string;
+      title: string | null;
       user_name: string;
       created_at: Date;
       updated_at: Date;
@@ -240,6 +235,8 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
       `SELECT
          c.id,
          c.provider,
+         c.model,
+         c.title,
          c.user_name,
          c.created_at,
          c.updated_at,
@@ -260,6 +257,8 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
     return result.rows.map((row) => ({
       id: row.id,
       provider: row.provider,
+      model: row.model,
+      title: row.title,
       userName: row.user_name,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -269,8 +268,7 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
   }
 
   async listEventsByProject(
-    projectId: string,
-    limit: number,
+    options: ListEventsByProjectOptions,
   ): Promise<
     Array<{
       id: string;
@@ -293,9 +291,10 @@ export class PostgresService implements OnModuleInit, OnModuleDestroy {
          FROM prompt_events pe
          JOIN conversations c ON c.id = pe.conversation_id
         WHERE c.project_id = $1
+          AND ($3::uuid IS NULL OR pe.conversation_id = $3::uuid)
         ORDER BY pe.created_at DESC
-        LIMIT $2`,
-      [projectId, limit],
+        LIMIT $2 OFFSET $4`,
+      [options.projectId, options.limit, options.conversationId ?? null, options.offset ?? 0],
     );
     return result.rows.map((row) => ({
       id: row.id,

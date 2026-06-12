@@ -8,6 +8,9 @@
     "build:core": "pnpm --filter @contextforge/core build",
     "dev:api": "pnpm --filter @contextforge/api start:dev",
     "dev:mcp": "pnpm --filter @contextforge/mcp-server start:dev",
+    "db:init": "pnpm --filter @contextforge/core db:init",
+    "db:smoke": "pnpm --filter @contextforge/mcp-server db:smoke",
+    "test:e2e": "pnpm --filter @contextforge/mcp-server test:e2e",
     "format": "prettier --write \"**/*.{ts,json,md}\""
   },
   "devDependencies": {

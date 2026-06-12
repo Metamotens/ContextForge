@@ -22,7 +22,7 @@ Minimal NestJS skeleton for the ContextForge MCP-first MVP.
 | `pnpm build` | Compile TypeScript to `dist/` |
 | `pnpm start` | Run compiled server (`dist/main.js`) |
 | `pnpm start:dev` | Run server in dev mode with `.env` |
-| `pnpm db:init` | Apply `src/db/schema.sql` to Postgres |
+| `pnpm db:init` | Apply core schema (`packages/core/.../database/schema.sql`) via `@contextforge/core` |
 | `pnpm db:smoke` | Quick connectivity check (Postgres + pgvector) |
 | `pnpm test:e2e` | Full E2E test (persist, summarize, vector search) — requires Ollama |
 | `pnpm format` | Format code with Prettier |

@@ -10,6 +10,15 @@ export interface UpsertConversationInput {
   projectId: string;
   provider: string;
   userName: string;
+  model: string;
+  title?: string | null;
+}
+
+export interface ListEventsByProjectOptions {
+  projectId: string;
+  limit: number;
+  offset?: number;
+  conversationId?: string;
 }
 
 export interface InsertPromptEventInput {

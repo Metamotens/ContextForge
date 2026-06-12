@@ -3,6 +3,8 @@ export interface PersistEventInput {
   provider: string;
   userName: string;
   conversationId: string;
+  model?: string;
+  title?: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   isSummary?: boolean;

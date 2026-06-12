@@ -22,8 +22,23 @@ function getPool(): Pool {
   return pool;
 }
 
+function formatQueryError(e: unknown): Error {
+  if (e && typeof e === 'object' && 'errors' in e && Array.isArray((e as AggregateError).errors)) {
+    const agg = e as AggregateError;
+    const detail = agg.errors.map((inner) => (inner instanceof Error ? inner.message : String(inner))).join('; ');
+    return new Error(detail || agg.message || 'PostgreSQL connection failed');
+  }
+  if (e instanceof Error) return e;
+  return new Error(String(e));
+}
+
 export async function execPsql(sql: string): Promise<string> {
-  const result = await getPool().query(sql);
+  let result;
+  try {
+    result = await getPool().query(sql);
+  } catch (e) {
+    throw formatQueryError(e);
+  }
   if (result.rows.length === 0) {
     return result.rowCount != null ? String(result.rowCount) : '';
   }

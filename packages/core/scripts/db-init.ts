@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { Pool } from 'pg';
 
 function log(message: string): void {
@@ -10,8 +10,12 @@ function err(message: string): void {
   process.stderr.write(`[db:init][error] ${message}\n`);
 }
 
+function resolveSchemaPath(): string {
+  return join(__dirname, '..', 'src', 'persistence', 'database', 'schema.sql');
+}
+
 async function main(): Promise<number> {
-  const sqlPath = join(dirname(__dirname), 'db', 'schema.sql');
+  const sqlPath = resolveSchemaPath();
   const sql = readFileSync(sqlPath, 'utf8');
 
   const pool = new Pool({
@@ -26,6 +30,7 @@ async function main(): Promise<number> {
   log(
     `Connecting to ${process.env.POSTGRES_USER ?? 'contextforge'}@${process.env.POSTGRES_HOST ?? 'localhost'}:${process.env.POSTGRES_PORT ?? 5432}/${process.env.POSTGRES_DB ?? 'contextforge'}`,
   );
+  log(`Schema file: ${sqlPath}`);
 
   try {
     await pool.query(sql);
@@ -60,11 +65,28 @@ async function main(): Promise<number> {
     );
     log(`prompt_events.embedding: ${col.rows[0]?.udt_name ?? 'missing'}`);
 
+    const schemaCols = await pool.query<{ column_name: string; is_nullable: string }>(
+      `SELECT column_name, is_nullable FROM information_schema.columns
+        WHERE table_name = 'conversations' AND column_name IN ('model', 'title')`,
+    );
+    const modelCol = schemaCols.rows.find((r) => r.column_name === 'model');
+    const titleCol = schemaCols.rows.find((r) => r.column_name === 'title');
+    log(`conversations.model: ${modelCol ? `nullable=${modelCol.is_nullable}` : 'missing'}`);
+    log(`conversations.title: ${titleCol ? `nullable=${titleCol.is_nullable}` : 'missing'}`);
+
+    const uniqueName = await pool.query<{ conname: string }>(
+      `SELECT conname FROM pg_constraint WHERE conname = 'projects_name_unique'`,
+    );
+    log(`projects.name unique: ${uniqueName.rows.length === 1 ? 'ok' : 'missing'}`);
+
     const ok =
       extensions.includes('vector') &&
       tables.length === 3 &&
       hasHnsw &&
-      col.rows[0]?.udt_name === 'vector';
+      col.rows[0]?.udt_name === 'vector' &&
+      modelCol?.is_nullable === 'NO' &&
+      titleCol?.is_nullable === 'YES' &&
+      uniqueName.rows.length === 1;
 
     if (!ok) {
       err('Verification failed — check output above');
@@ -74,7 +96,15 @@ async function main(): Promise<number> {
     log('Database ready');
     return 0;
   } catch (e) {
-    err(e instanceof Error ? e.message : String(e));
+    if (e && typeof e === 'object' && 'errors' in e && Array.isArray((e as AggregateError).errors)) {
+      const agg = e as AggregateError;
+      const detail = agg.errors
+        .map((inner) => (inner instanceof Error ? inner.message : String(inner)))
+        .join('; ');
+      err(detail || agg.message || 'PostgreSQL connection failed');
+    } else {
+      err(e instanceof Error ? e.message : String(e));
+    }
     return 1;
   } finally {
     await pool.end();

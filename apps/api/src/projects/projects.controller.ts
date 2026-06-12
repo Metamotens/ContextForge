@@ -1,7 +1,9 @@
 import {
   Controller,
   DefaultValuePipe,
+  Delete,
   Get,
+  HttpCode,
   Param,
   ParseIntPipe,
   ParseUUIDPipe,
@@ -10,6 +12,7 @@ import {
 
 import type {
   ConversationDto,
+  IndexedSummaryDto,
   ProjectDto,
   ProjectStatsDto,
   PromptEventDto,
@@ -19,6 +22,8 @@ import type {
 import { ProjectsService } from './projects.service';
 
 const DEFAULT_EVENT_LIMIT = 50;
+const DEFAULT_EVENT_OFFSET = 0;
+const DEFAULT_SUMMARY_LIMIT = 100;
 
 @Controller('projects')
 export class ProjectsController {
@@ -43,8 +48,18 @@ export class ProjectsController {
   listEvents(
     @Param('id', ParseUUIDPipe) id: string,
     @Query('limit', new DefaultValuePipe(DEFAULT_EVENT_LIMIT), ParseIntPipe) limit: number,
+    @Query('offset', new DefaultValuePipe(DEFAULT_EVENT_OFFSET), ParseIntPipe) offset: number,
+    @Query('conversationId', new ParseUUIDPipe({ optional: true })) conversationId?: string,
   ): Promise<PromptEventDto[]> {
-    return this.projects.listEvents(id, limit);
+    return this.projects.listEvents(id, limit, offset, conversationId);
+  }
+
+  @Get(':id/summaries')
+  listSummaries(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('limit', new DefaultValuePipe(DEFAULT_SUMMARY_LIMIT), ParseIntPipe) limit: number,
+  ): Promise<IndexedSummaryDto[]> {
+    return this.projects.listSummaries(id, limit);
   }
 
   @Get(':id/search')
@@ -58,5 +73,11 @@ export class ProjectsController {
   @Get(':id')
   getProject(@Param('id', ParseUUIDPipe) id: string): Promise<ProjectDto> {
     return this.projects.getProject(id);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  deleteProject(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
+    return this.projects.deleteProject(id);
   }
 }

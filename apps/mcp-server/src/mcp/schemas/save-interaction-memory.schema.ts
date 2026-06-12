@@ -7,6 +7,8 @@ export const SaveInteractionMemoryInputSchema = z.object({
   provider: z.string().min(1),
   userName: z.string().min(1),
   conversationId: z.string().min(1),
+  model: z.string().min(1).optional(),
+  title: z.string().max(255).optional(),
   role: RoleSchema,
   content: z.string().min(1),
   isSummary: z.boolean().optional(),

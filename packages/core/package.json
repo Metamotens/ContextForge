@@ -11,7 +11,8 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "db:init": "node --env-file=../../.env -r ts-node/register scripts/db-init.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.26",
@@ -23,6 +24,7 @@
   "devDependencies": {
     "@types/node": "^22.19.20",
     "@types/pg": "^8.11.10",
+    "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
 }

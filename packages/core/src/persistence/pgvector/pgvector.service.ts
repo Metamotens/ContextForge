@@ -77,10 +77,6 @@ export class PgVectorService implements OnModuleInit, OnModuleDestroy {
     const topK = input.topK ?? this.topKDefault;
     const vec = `[${input.queryVector.join(',')}]`;
 
-    const conversationFilter = input.conversationId
-      ? `AND c.id = '${input.conversationId}'`
-      : '';
-
     const result = await this.pool.query<{ id: string; content: string; score: number }>(
       `SELECT pe.id,
               pe.content,
@@ -90,10 +86,10 @@ export class PgVectorService implements OnModuleInit, OnModuleDestroy {
         WHERE pe.is_summary = true
           AND pe.embedding IS NOT NULL
           AND c.project_id = $2
-          ${conversationFilter}
+          AND ($4::uuid IS NULL OR c.id = $4::uuid)
         ORDER BY pe.embedding <=> $1::vector
         LIMIT $3`,
-      [vec, input.projectId, topK],
+      [vec, input.projectId, topK, input.conversationId ?? null],
     );
 
     return result.rows.map((row) => ({
