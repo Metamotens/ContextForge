@@ -20,7 +20,7 @@ RUN find . -name '*.tsbuildinfo' -delete \
   && pnpm --filter @contextforge/core build \
   && pnpm --filter @contextforge/mcp-server build
 
-RUN pnpm --filter @contextforge/mcp-server deploy --prod /prod
+RUN pnpm deploy --filter=@contextforge/mcp-server --prod /prod
 
 FROM node:22-alpine AS runner
 
