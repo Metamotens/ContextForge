@@ -1,6 +1,6 @@
 # ContextForge MCP Server
 
-Minimal NestJS skeleton for the ContextForge MCP-first MVP.
+NestJS MCP server exposing ContextForge memory tools over **Streamable HTTP**.
 
 ## Tools
 
@@ -9,11 +9,13 @@ Minimal NestJS skeleton for the ContextForge MCP-first MVP.
 - `delete_project_memory` — delete all stored memory for a project (Postgres cascade).
 - `list_project_memory` — read-only inspection of a project's full memory state (counts, conversations, recent events, indexed summaries).
 
-## Run
+## Run (local dev)
 
 1. Install dependencies: `pnpm install`
 2. Apply database schema: `pnpm db:init`
 3. Start in dev mode: `pnpm start:dev`
+
+The server listens on `http://0.0.0.0:${MCP_PORT}/mcp` (default port `3030`).
 
 ## Scripts
 
@@ -27,4 +29,56 @@ Minimal NestJS skeleton for the ContextForge MCP-first MVP.
 | `pnpm test:e2e` | Full E2E test (persist, summarize, vector search) — requires Ollama |
 | `pnpm format` | Format code with Prettier |
 
-The MCP is consumed over STDIO by an MCP client (e.g. Cursor, opencode).
+## Docker (metaserver, red `contextforge`)
+
+Build from the **repo root**:
+
+```bash
+docker build -f apps/mcp-server/Dockerfile -t contextforge-mcp .
+```
+
+On the server, create `.env.docker` from [`.env.docker.example`](../../.env.docker.example) (uses Docker DNS: `contextforge-postgres`, `contextforge-ollama`).
+
+```bash
+cp .env.docker.example .env.docker
+
+docker run -d \
+  --name contextforge-mcp \
+  --network contextforge \
+  --env-file .env.docker \
+  -p 3030:3030 \
+  --restart unless-stopped \
+  contextforge-mcp:latest
+```
+
+Verify:
+
+```bash
+docker logs -f contextforge-mcp
+curl -s -o /dev/null -w "%{http_code}" http://localhost:3030/mcp
+```
+
+## Connect Cursor (remote)
+
+Copy [`.cursor/mcp.json.example`](../../.cursor/mcp.json.example) to `.cursor/mcp.json` (or global `~/.cursor/mcp.json`) and set your server URL:
+
+```json
+{
+  "mcpServers": {
+    "contextforge": {
+      "url": "http://192.168.68.69:3030/mcp"
+    }
+  }
+}
+```
+
+Reload MCP servers in Cursor after changing the config.
+
+## Environment profiles
+
+| Profile | File | `POSTGRES_HOST` | `OLLAMA_URL` |
+|---------|------|-----------------|--------------|
+| Dev from Windows/LAN | `.env` | LAN IP (`192.168.68.69`) | `http://192.168.68.69:11434` |
+| Docker container | `.env.docker` | `contextforge-postgres` | `http://contextforge-ollama:11434` |
+
+Smokes (`db:smoke`, `test:e2e`) from the host use `.env` with the LAN IP.

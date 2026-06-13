@@ -11,13 +11,15 @@ ContextForge is a **pnpm monorepo** that captures IDE conversation memory via **
 |-------|---------------|------|
 | Core | [`packages/core`](packages/core) | Schema SQL, `db:init`, Postgres, pgvector, enrichment, retrieval |
 | Contracts | [`packages/shared`](packages/shared) | REST DTOs (API ↔ dashboard) |
-| MCP | [`apps/mcp-server`](apps/mcp-server) | STDIO MCP server + smoke scripts |
+| MCP | [`apps/mcp-server`](apps/mcp-server) | Streamable HTTP MCP server (`/mcp`) + smoke scripts |
 | API | [`apps/api`](apps/api) | HTTP observability (`/api/*`) |
 | Dashboard | `apps/dashboard` | (pending) Angular UI |
 
 **Plans:** [`plans/specifications.md`](plans/specifications.md) (architecture), [`plans/improves.md`](plans/improves.md) (schema UX), [`plans/improvements2.md`](plans/improvements2.md) (monorepo layout), [`plans/knowledge-entries.md`](plans/knowledge-entries.md) (future RAG layer).
 
-**Env:** `.env` at repo root; apps load it via `--env-file=../../.env`.
+**Env:** `.env` at repo root; apps load it via `--env-file=../../.env`. Docker deploy uses `.env.docker` (see [`.env.docker.example`](.env.docker.example)).
+
+**MCP Docker:** `docker build -f apps/mcp-server/Dockerfile -t contextforge-mcp .` then `docker run --network contextforge --env-file .env.docker -p 3030:3030 contextforge-mcp`.
 
 ## Verification
 

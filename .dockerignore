@@ -1,0 +1,11 @@
+node_modules
+dist
+.git
+.github
+.cursor
+*.md
+plans
+skills
+.env
+.env.*
+!.env.docker.example

@@ -14,7 +14,12 @@ import { SearchProjectContextTool } from '@mcp/tools/search-project-context.tool
     McpModule.forRoot({
       name: 'contextforge-mcp-server',
       version: '0.1.0',
-      transport: McpTransportType.STDIO,
+      transport: McpTransportType.STREAMABLE_HTTP,
+      streamableHttp: {
+        enableJsonResponse: true,
+        sessionIdGenerator: undefined,
+        statelessMode: true,
+      },
     }),
   ],
   providers: [
