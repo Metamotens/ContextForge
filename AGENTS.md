@@ -19,7 +19,7 @@ ContextForge is a **pnpm monorepo** that captures IDE conversation memory via **
 
 **Env:** `.env` at repo root; apps load it via `--env-file=../../.env`. Docker deploy uses `.env.docker` (see [`.env.docker.example`](.env.docker.example)).
 
-**MCP Docker:** `docker build -f apps/mcp-server/Dockerfile -t contextforge-mcp .` then `docker run --network contextforge --env-file .env.docker -p 3030:3030 contextforge-mcp`.
+**MCP Docker:** `docker compose up -d --build` from repo root (see [`docker-compose.yml`](docker-compose.yml)); copy [`.env.docker.example`](.env.docker.example) to `.env.docker`.
 
 ## Verification
 

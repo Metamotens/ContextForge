@@ -29,32 +29,25 @@ The server listens on `http://0.0.0.0:${MCP_PORT}/mcp` (default port `3030`).
 | `pnpm test:e2e` | Full E2E test (persist, summarize, vector search) — requires Ollama |
 | `pnpm format` | Format code with Prettier |
 
-## Docker (metaserver, red `contextforge`)
+## Docker (metaserver)
 
-Build from the **repo root**:
-
-```bash
-docker build -f apps/mcp-server/Dockerfile -t contextforge-mcp .
-```
-
-On the server, create `.env.docker` from [`.env.docker.example`](../../.env.docker.example) (uses Docker DNS: `contextforge-postgres`, `contextforge-ollama`).
+From the **repo root** (`~/contextforge/ContextForge`):
 
 ```bash
 cp .env.docker.example .env.docker
+docker compose up -d --build
+docker compose logs -f mcp
+```
 
-docker run -d \
-  --name contextforge-mcp \
-  --network contextforge \
-  --env-file .env.docker \
-  -p 3030:3030 \
-  --restart unless-stopped \
-  contextforge-mcp:latest
+Build only the MCP service:
+
+```bash
+docker compose build mcp
 ```
 
 Verify:
 
 ```bash
-docker logs -f contextforge-mcp
 curl -s -o /dev/null -w "%{http_code}" http://localhost:3030/mcp
 ```
 
@@ -79,6 +72,6 @@ Reload MCP servers in Cursor after changing the config.
 | Profile | File | `POSTGRES_HOST` | `OLLAMA_URL` |
 |---------|------|-----------------|--------------|
 | Dev from Windows/LAN | `.env` | LAN IP (`192.168.68.69`) | `http://192.168.68.69:11434` |
-| Docker container | `.env.docker` | `contextforge-postgres` | `http://contextforge-ollama:11434` |
+| Docker container | `.env.docker` | `postgres` | `http://ollama:11434` |
 
 Smokes (`db:smoke`, `test:e2e`) from the host use `.env` with the LAN IP.

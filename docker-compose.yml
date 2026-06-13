@@ -1,0 +1,58 @@
+# Run from repo root:
+#   cp .env.docker.example .env.docker
+#   docker compose up -d --build
+
+services:
+
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: contextforge-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: contextforge
+      POSTGRES_PASSWORD: contextforge
+      POSTGRES_DB: contextforge
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  ollama:
+    image: ollama/ollama
+    container_name: contextforge-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities:
+                - gpu
+
+  mcp:
+    build:
+      context: .
+      dockerfile: apps/mcp-server/Dockerfile
+    image: contextforge-mcp:latest
+    container_name: contextforge-mcp
+    restart: unless-stopped
+    env_file:
+      - .env.docker
+    ports:
+      - "3030:3030"
+    depends_on:
+      - postgres
+      - ollama
+
+volumes:
+  postgres_data:
+  ollama_data:
+
+networks:
+  default:
+    name: contextforge
