@@ -16,6 +16,14 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contextforge -d contextforge"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - contextforge
 
   ollama:
     image: ollama/ollama
@@ -33,6 +41,8 @@ services:
               count: all
               capabilities:
                 - gpu
+    networks:
+      - contextforge
 
   mcp:
     build:
@@ -43,17 +53,25 @@ services:
     restart: unless-stopped
     env_file:
       - .env.docker
+    environment:
+      POSTGRES_HOST: contextforge-postgres
+      OLLAMA_URL: http://contextforge-ollama:11434
+      DATABASE_URL: postgresql://contextforge:contextforge@contextforge-postgres:5432/contextforge
     ports:
       - "3030:3030"
     depends_on:
-      - postgres
-      - ollama
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    networks:
+      - contextforge
 
 volumes:
   postgres_data:
   ollama_data:
 
 networks:
-  default:
+  contextforge:
     name: contextforge
     external: true
