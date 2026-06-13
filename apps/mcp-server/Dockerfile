@@ -16,7 +16,8 @@ RUN pnpm install --frozen-lockfile
 COPY packages/core packages/core
 COPY apps/mcp-server apps/mcp-server
 
-RUN pnpm --filter @contextforge/core build \
+RUN find . -name '*.tsbuildinfo' -delete \
+  && pnpm --filter @contextforge/core build \
   && pnpm --filter @contextforge/mcp-server build
 
 RUN pnpm --filter @contextforge/mcp-server deploy --prod /prod
