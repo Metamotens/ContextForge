@@ -4,6 +4,7 @@
       { "path": "./packages/core" },
       { "path": "./packages/shared" },
       { "path": "./apps/mcp-server" },
-      { "path": "./apps/api" }
+      { "path": "./apps/api" },
+      { "path": "./apps/dashboard" }
     ]
   }

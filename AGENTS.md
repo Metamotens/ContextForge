@@ -13,7 +13,7 @@ ContextForge is a **pnpm monorepo** that captures IDE conversation memory via **
 | Contracts | [`packages/shared`](packages/shared) | REST DTOs (API ↔ dashboard) |
 | MCP | [`apps/mcp-server`](apps/mcp-server) | Streamable HTTP MCP server (`/mcp`) + smoke scripts |
 | API | [`apps/api`](apps/api) | HTTP observability (`/api/*`) |
-| Dashboard | `apps/dashboard` | (pending) Angular UI |
+| Dashboard | [`apps/dashboard`](apps/dashboard) | Angular 22 + Tailwind UI |
 
 **Plans:** [`plans/specifications.md`](plans/specifications.md) (architecture), [`plans/improves.md`](plans/improves.md) (schema UX), [`plans/improvements2.md`](plans/improvements2.md) (monorepo layout), [`plans/knowledge-entries.md`](plans/knowledge-entries.md) (future RAG layer).
 
@@ -45,6 +45,7 @@ If Postgres is not running, `db:init` and `db:smoke` fail with `ECONNREFUSED` on
 | `@contextforge/shared` | `build` |
 | `@contextforge/mcp-server` | `start:dev`, `db:smoke`, `test:e2e` (also delegates `db:init` → core) |
 | `@contextforge/api` | `start:dev` |
+| `@contextforge/dashboard` | `start`, `build`, `test` |
 
 ## Key paths
 
@@ -69,6 +70,7 @@ Read the relevant `SKILL.md` before tasks in that domain.
 | nestjs-best-practices | [skills/nestjs-best-practices/SKILL.md](skills/nestjs-best-practices/SKILL.md) | NestJS modules, DI, security, performance |
 | postgresql-code-review | [skills/postgresql-code-review/SKILL.md](skills/postgresql-code-review/SKILL.md) | JSONB, schema design, RLS, anti-patterns |
 | postgresql-optimization | [skills/postgresql-optimization/SKILL.md](skills/postgresql-optimization/SKILL.md) | Query tuning, indexes, pgvector performance |
+| angular-developer | [skills/angular-developer/SKILL.md](skills/angular-developer/SKILL.md) | Angular 22 code, signals, routing, Tailwind, CLI |
 
 ## Register a new skill
 

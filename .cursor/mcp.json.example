@@ -1,7 +1,0 @@
-{
-  "mcpServers": {
-    "contextforge": {
-      "url": "http://192.168.68.69:3030/mcp"
-    }
-  }
-}
