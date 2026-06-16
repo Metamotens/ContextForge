@@ -59,7 +59,7 @@ Copy [`.cursor/mcp.json.example`](../../.cursor/mcp.json.example) to `.cursor/mc
 {
   "mcpServers": {
     "contextforge": {
-      "url": "http://192.168.68.69:3030/mcp"
+      "url": "http://192.168.68.71:3030/mcp"
     }
   }
 }
@@ -71,7 +71,7 @@ Reload MCP servers in Cursor after changing the config.
 
 | Profile | File | `POSTGRES_HOST` | `OLLAMA_URL` |
 |---------|------|-----------------|--------------|
-| Dev from Windows/LAN | `.env` | LAN IP (`192.168.68.69`) | `http://192.168.68.69:11434` |
+| Dev from Windows/LAN | `.env` | LAN IP (`192.168.68.71`) | `http://192.168.68.71:11434` |
 | Docker container | `.env.docker` | `contextforge-postgres` | `http://contextforge-ollama:11434` |
 
 Smokes (`db:smoke`, `test:e2e`) from the host use `.env` with the LAN IP.

@@ -1,3 +1,141 @@
-/* You can add global styles to this file, and also import other style files */
-
 @import 'tailwindcss';
+
+@theme {
+  --color-background: #12131a;
+  --color-surface: #12131a;
+  --color-surface-dim: #12131a;
+  --color-surface-bright: #383941;
+  --color-surface-container: #1e1f26;
+  --color-surface-container-low: #1a1b22;
+  --color-surface-container-high: #292931;
+  --color-surface-container-highest: #33343c;
+  --color-surface-container-lowest: #0d0e15;
+  --color-surface-variant: #33343c;
+  --color-on-background: #e3e1ec;
+  --color-on-surface: #e3e1ec;
+  --color-on-surface-variant: #c2c6d6;
+  --color-primary: #adc6ff;
+  --color-on-primary: #002e6a;
+  --color-primary-container: #4d8eff;
+  --color-on-primary-container: #00285d;
+  --color-primary-fixed: #d8e2ff;
+  --color-on-primary-fixed: #001a42;
+  --color-secondary: #c8c5ca;
+  --color-on-secondary: #303033;
+  --color-secondary-container: #47464a;
+  --color-on-secondary-container: #b6b4b8;
+  --color-tertiary: #c8c6c9;
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+  --color-outline: #8c909f;
+  --color-outline-variant: #424754;
+
+  --spacing-sidebar-width: 240px;
+  --spacing-gutter: 1rem;
+  --spacing-margin-page: 1.5rem;
+  --spacing-stack-gap: 0.75rem;
+  --spacing-subnav-height: 48px;
+
+  --font-display-lg: Geist, ui-sans-serif, system-ui, sans-serif;
+  --font-headline-md: Geist, ui-sans-serif, system-ui, sans-serif;
+  --font-title-sm: Geist, ui-sans-serif, system-ui, sans-serif;
+  --font-body-base: Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-body-sm: Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-label-caps: Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-code-sm: 'JetBrains Mono', ui-monospace, monospace;
+
+  --text-display-lg: 32px;
+  --text-display-lg--line-height: 40px;
+  --text-headline-md: 24px;
+  --text-headline-md--line-height: 32px;
+  --text-title-sm: 18px;
+  --text-title-sm--line-height: 28px;
+  --text-body-base: 14px;
+  --text-body-base--line-height: 20px;
+  --text-body-sm: 12px;
+  --text-body-sm--line-height: 18px;
+  --text-label-caps: 11px;
+  --text-label-caps--line-height: 16px;
+  --text-code-sm: 12px;
+  --text-code-sm--line-height: 16px;
+
+  --animate-fade-in-up: fade-in-up 0.5s ease-out forwards;
+  --animate-float: float 4s ease-in-out infinite;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@layer base {
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-on-surface font-body-base min-h-screen antialiased;
+  }
+
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+
+  .material-symbols-outlined.fill-icon {
+    font-variation-settings: 'FILL' 1;
+  }
+}
+
+@layer utilities {
+  .animate-fade-in-up {
+    animation: var(--animate-fade-in-up);
+    opacity: 0;
+  }
+
+  .stagger-1 {
+    animation-delay: 100ms;
+  }
+  .stagger-2 {
+    animation-delay: 200ms;
+  }
+  .stagger-3 {
+    animation-delay: 300ms;
+  }
+  .stagger-4 {
+    animation-delay: 400ms;
+  }
+  .stagger-5 {
+    animation-delay: 500ms;
+  }
+
+  .animate-float {
+    animation: var(--animate-float);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fade-in-up,
+    .animate-float {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
