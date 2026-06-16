@@ -1,7 +1,12 @@
 # Run from repo root:
 #   cp .env.docker.example .env.docker
+#   docker network create contextforge   # once, if missing
 #   docker compose up -d --build
-
+#
+# Services:
+#   dashboard  http://localhost:8080  (static; calls API via API_BASE_URL + CORS)
+#   api        http://localhost:3000/api
+#   mcp        http://localhost:3030/mcp
 services:
 
   postgres:
@@ -64,6 +69,65 @@ services:
         condition: service_healthy
       ollama:
         condition: service_started
+    networks:
+      - contextforge
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: contextforge-api:latest
+    container_name: contextforge-api
+    restart: unless-stopped
+    env_file:
+      - .env.docker
+    environment:
+      API_PORT: 3000
+      POSTGRES_HOST: contextforge-postgres
+      OLLAMA_URL: http://contextforge-ollama:11434
+      DATABASE_URL: postgresql://contextforge:contextforge@contextforge-postgres:5432/contextforge
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - contextforge
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: apps/dashboard/Dockerfile
+      args:
+        API_BASE_URL: ${API_BASE_URL:-http://localhost:3000}
+    image: contextforge-dashboard:latest
+    container_name: contextforge-dashboard
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:8080/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - contextforge
 

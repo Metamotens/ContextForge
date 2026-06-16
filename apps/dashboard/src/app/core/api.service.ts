@@ -12,34 +12,37 @@ import type {
   SearchResponseDto,
 } from '@contextforge/shared';
 
+import { ConfigService } from './config.service';
+
 @Service()
 export class ApiService {
   private http = inject(HttpClient);
+  private config = inject(ConfigService);
 
-  health = httpResource<HealthDto>(() => ({ url: '/api/health' }));
+  health = httpResource<HealthDto>(() => ({ url: this.config.apiPath('/api/health') }));
 
-  globalStats = httpResource<GlobalStatsDto>(() => ({ url: '/api/stats' }));
+  globalStats = httpResource<GlobalStatsDto>(() => ({ url: this.config.apiPath('/api/stats') }));
 
-  projects = httpResource<ProjectDto[]>(() => ({ url: '/api/projects' }));
+  projects = httpResource<ProjectDto[]>(() => ({ url: this.config.apiPath('/api/projects') }));
 
   project(id: () => string | undefined) {
     return httpResource<ProjectDto>(() => {
       const value = id();
-      return value ? { url: `/api/projects/${value}` } : undefined;
+      return value ? { url: this.config.apiPath(`/api/projects/${value}`) } : undefined;
     });
   }
 
   projectStats(id: () => string | undefined) {
     return httpResource<ProjectStatsDto>(() => {
       const value = id();
-      return value ? { url: `/api/projects/${value}/stats` } : undefined;
+      return value ? { url: this.config.apiPath(`/api/projects/${value}/stats`) } : undefined;
     });
   }
 
   conversations(id: () => string | undefined) {
     return httpResource<ConversationDto[]>(() => {
       const value = id();
-      return value ? { url: `/api/projects/${value}/conversations` } : undefined;
+      return value ? { url: this.config.apiPath(`/api/projects/${value}/conversations`) } : undefined;
     });
   }
 
@@ -53,7 +56,7 @@ export class ApiService {
       const { limit, offset, conversationId } = params();
       const query: Record<string, string | number> = { limit, offset };
       if (conversationId) query['conversationId'] = conversationId;
-      return { url: `/api/projects/${projectId}/events`, params: query };
+      return { url: this.config.apiPath(`/api/projects/${projectId}/events`), params: query };
     });
   }
 
@@ -61,7 +64,10 @@ export class ApiService {
     return httpResource<IndexedSummaryDto[]>(() => {
       const value = id();
       return value
-        ? { url: `/api/projects/${value}/summaries`, params: { limit: limit() } }
+        ? {
+            url: this.config.apiPath(`/api/projects/${value}/summaries`),
+            params: { limit: limit() },
+          }
         : undefined;
     });
   }
@@ -71,12 +77,12 @@ export class ApiService {
       const projectId = id();
       const q = query().trim();
       return projectId && q
-        ? { url: `/api/projects/${projectId}/search`, params: { q } }
+        ? { url: this.config.apiPath(`/api/projects/${projectId}/search`), params: { q } }
         : undefined;
     });
   }
 
   deleteProject(id: string) {
-    return firstValueFrom(this.http.delete(`/api/projects/${id}`));
+    return firstValueFrom(this.http.delete(this.config.apiPath(`/api/projects/${id}`)));
   }
 }

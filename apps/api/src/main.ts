@@ -3,11 +3,21 @@ import { NestFactory } from '@nestjs/core';
 
 import { AppModule } from './app.module';
 
+function parseCorsOrigins(): string[] | undefined {
+  const raw = process.env.CORS_ORIGINS?.trim();
+  if (!raw || raw === '*') return undefined;
+  const origins = raw.split(',').map((value) => value.trim()).filter(Boolean);
+  return origins.length > 0 ? origins : undefined;
+}
+
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
 
   app.enableShutdownHooks();
-  app.enableCors();
+
+  const corsOrigins = parseCorsOrigins();
+  app.enableCors(corsOrigins ? { origin: corsOrigins } : undefined);
+
   app.setGlobalPrefix('api');
 
   const port = Number(process.env.API_PORT) || 3000;
