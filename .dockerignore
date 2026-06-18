@@ -9,5 +9,4 @@ plans
 skills
 .env
 .env.*
-!.env.docker
 !.env.docker.example

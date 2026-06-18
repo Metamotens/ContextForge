@@ -1,9 +1,9 @@
 # Build from repo root:
-#   cp .env.docker.example .env.docker   # set API_BASE_URL to browser-facing URL
 #   docker compose build --no-cache dashboard
+#   docker compose up -d dashboard api
 #
 # Angular 22 CLI requires Node ^22.22.3 || ^24.15.0 || >=26 (see @angular/cli engines).
-# API URL is read from .env.docker (API_BASE_URL) at build time.
+# Serves static files only. Put nginx (or similar) on the host to proxy /api → api:3000.
 
 FROM node:24.16.0-alpine AS builder
 
@@ -19,13 +19,8 @@ RUN pnpm install --frozen-lockfile
 
 COPY packages/shared packages/shared
 COPY apps/dashboard apps/dashboard
-COPY .env.docker .env.docker.build
 
-RUN API_BASE_URL="$(grep -E '^API_BASE_URL=' .env.docker.build | cut -d= -f2- | tr -d '\r')" \
-  && API_BASE_URL="${API_BASE_URL:-http://localhost:3000}" \
-  && printf "export const environment = {\n  production: true,\n  apiBaseUrl: '%s',\n};\n" "$API_BASE_URL" \
-    > apps/dashboard/src/environments/environment.prod.ts \
-  && pnpm --filter @contextforge/shared build \
+RUN pnpm --filter @contextforge/shared build \
   && pnpm --filter @contextforge/dashboard build
 
 FROM node:24.16.0-alpine AS runner

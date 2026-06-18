@@ -1,12 +1,12 @@
 # Run from repo root:
-#   cp .env.docker.example .env.docker   # edit API_BASE_URL + CORS_ORIGINS for your LAN IP
+#   cp .env.docker.example .env.docker
 #   docker network create contextforge   # once, if missing
 #   docker compose up -d --build dashboard api
 #
-# Services:
-#   dashboard  http://<server-ip>:8080
-#   api        http://<server-ip>:3000/api
-#   mcp        http://<server-ip>:3030/mcpservices:
+# Services (bind localhost; expose via host nginx — see deploy notes):
+#   dashboard  http://127.0.0.1:8080
+#   api        http://127.0.0.1:3000/api
+#   mcp        http://127.0.0.1:3030/mcp
 services:
   postgres:
     image: pgvector/pgvector:pg17
@@ -86,7 +86,7 @@ services:
       OLLAMA_URL: http://contextforge-ollama:11434
       DATABASE_URL: postgresql://contextforge:contextforge@contextforge-postgres:5432/contextforge
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -113,7 +113,10 @@ services:
     container_name: contextforge-dashboard
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      api:
+        condition: service_healthy
     healthcheck:
       test:
         [
